@@ -1,0 +1,43 @@
+require("dotenv").config();
+const express = require("express");
+const cors    = require("cors");
+const { connectDB } = require("./db");
+
+const cuentaRoutes = require("./routes/cuenta");
+const testDBRoutes = require("./routes/testDB");
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// Ruta raíz
+app.get("/", (req, res) => {
+  res.json({ mensaje: "🏦 API Banco Nexus funcionando" });
+});
+
+// Rutas
+app.use("/api/cuenta", cuentaRoutes);
+app.use("/api/test-db", testDBRoutes);
+
+// Ruta no encontrada
+app.use((req, res) => {
+  res.status(404).json({ ok: false, error: "Ruta no encontrada" });
+});
+
+// Arrancar servidor solo si MongoDB conecta
+const PORT = process.env.PORT || 3000;
+
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Servidor en http://localhost:${PORT}`);
+      console.log(`   GET /`);
+      console.log(`   GET /api/test-db`);
+      console.log(`   GET /api/cuenta/:cuenta`);
+    });
+  })
+  .catch((err) => {
+    console.error("❌ No se pudo conectar a MongoDB:", err.message);
+    process.exit(1);
+  });
