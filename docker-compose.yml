@@ -28,15 +28,7 @@ services:
       - "27019:27017"
     volumes:
       - mongo3_data:/data/db
-
-  mongo4:
-    image: mongo:latest
-    container_name: mongo4
-    command: mongod --replSet rs0 --bind_ip_all
-    ports:
-      - "27020:27017"
-    volumes:
-      - mongo4_data:/data/db
+      
 
   backend:
     build: ./backend
@@ -47,12 +39,10 @@ services:
       - mongo1
       - mongo2
       - mongo3
-      - mongo4
     environment:
-      MONGO_URI: mongodb://mongo1:27017,mongo2:27017,mongo3:27017,mongo4:27017/?replicaSet=rs0
+      MONGO_URI: mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0
 
 volumes:
   mongo1_data:
   mongo2_data:
   mongo3_data:
-  mongo4_data:
