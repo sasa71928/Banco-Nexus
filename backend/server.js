@@ -30,8 +30,8 @@ const PORT = process.env.PORT || 3000;
 
 connectDB()
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`🚀 Servidor en http://localhost:${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Servidor en http://192.168.0.104:${PORT}`);
       console.log(`   GET /`);
       console.log(`   GET /api/test-db`);
       console.log(`   GET /api/cuenta/:cuenta`);
