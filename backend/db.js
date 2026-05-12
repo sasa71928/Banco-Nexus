@@ -1,6 +1,6 @@
 const { MongoClient } = require("mongodb");
 
-const uri = process.env.MONGO_URI || "mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0";
+const uri = process.env.MONGO_URI || "mongodb://mongo1:27017,mongo2:27017,mongo3:27017,mongo4:27017/?replicaSet=rs0";
 const dbName = process.env.DB_NAME || "nexus_banca";
 
 let client;
