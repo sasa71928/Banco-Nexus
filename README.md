@@ -438,20 +438,3 @@ El sistema debe:
 * Mantener consistencia distribuida
 
 ---
-
-# Evidencias sugeridas para presentación
-
-* Captura de rs.status()
-* Captura de replicación de datos
-* Video apagando PRIMARY
-* Video mostrando failover
-* Video mostrando recuperación automática
-* Dashboard funcionando durante caída
-
----
-
-# Conclusión
-
-La implementación del Replica Set permite construir un sistema distribuido tolerante a fallos utilizando MongoDB.
-
-Gracias a la replicación y al mecanismo de elección automática, el sistema puede seguir funcionando incluso si un nodo falla, garantizando disponibilidad y consistencia de datos.
