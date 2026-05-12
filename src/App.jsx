@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+// Cambia esta URL si tu backend está en otra dirección o puerto
 const API_BASE = "http://192.168.0.104:3000";
 
 const SAMPLE_ACCOUNTS = ["1002003001","1002003002","1002003003","1002003004","1002003005"];
@@ -106,41 +107,68 @@ export default function BancoNexus() {
   const [error, setError] = useState(null);
 
   async function handleConsulta(e) {
-    e?.preventDefault();
-    const cuenta = numeroCuenta.trim();
-    if (!cuenta) return;
-    setLoading(true);
-    setError(null);
-    setData(null);
-    try {
-      const res = await fetch(`${API_BASE}/api/cuenta/${cuenta}`);
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error ?? "Error desconocido");
-      setData(json);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  e?.preventDefault();
+
+  const cuenta = numeroCuenta.trim();
+
+  if (!cuenta) return;
+
+  setLoading(true);
+  setError(null);
+  setData(null);
+
+  try {
+
+    const res = await fetch(`${API_BASE}/api/cuenta/${cuenta}`);
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
     }
+
+    const json = await res.json();
+
+    if (!json.ok) {
+      throw new Error(json.error ?? "Error desconocido");
+    }
+
+    setData(json);
+
+  } catch (err) {
+
+    console.error(err);
+    setError(err.message);
+
+  } finally {
+
+    setLoading(false);
+
   }
+}
 
   async function handleSample(num) {
-    setNumeroCuenta(num);
-    const cuenta = numeroCuenta.trim();
-    if (!cuenta) return;
-    setError(null);
-    setData(null);
-    try {
-      const res = await fetch(`${API_BASE}/api/cuenta/${cuenta}`);
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error ?? "Error desconocido");
-      setData(json);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  setNumeroCuenta(num);
+
+  setLoading(true);
+  setError(null);
+  setData(null);
+
+  try {
+    const res = await fetch(`${API_BASE}/api/cuenta/${num}`);
+    const json = await res.json();
+
+    if (!json.ok) {
+      throw new Error(json.error ?? "Error desconocido");
     }
+
+    setData(json);
+
+  } catch (err) {
+    setError(err.message);
+
+  } finally {
+    setLoading(false);
   }
+}
 
   const depositos = data?.transacciones?.filter(t => t.tipo === "deposito") ?? [];
   const retiros = data?.transacciones?.filter(t => t.tipo === "retiro") ?? [];

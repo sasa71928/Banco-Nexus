@@ -10,8 +10,6 @@ services:
       - "27017:27017"
     volumes:
       - mongo1_data:/data/db
-    networks:
-      - mongoCluster
 
   mongo2:
     image: mongo:latest
@@ -21,8 +19,6 @@ services:
       - "27018:27017"
     volumes:
       - mongo2_data:/data/db
-    networks:
-      - mongoCluster
 
   mongo3:
     image: mongo:latest
@@ -32,14 +28,20 @@ services:
       - "27019:27017"
     volumes:
       - mongo3_data:/data/db
-    networks:
-      - mongoCluster
+
+  backend:
+    build: ./backend
+    container_name: server
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    environment:
+      MONGO_URI: mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0
 
 volumes:
   mongo1_data:
   mongo2_data:
   mongo3_data:
-
-networks:
-  mongoCluster:
-    driver: bridge
