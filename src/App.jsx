@@ -102,9 +102,12 @@ function TransactionRow({ tx }) {
 
 export default function BancoNexus() {
   const [numeroCuenta, setNumeroCuenta] = useState("");
+  const [monto, setMonto] = useState("");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [status, setStatus] = useState(null);
 
   async function handleConsulta(e) {
   e?.preventDefault();
@@ -144,6 +147,52 @@ export default function BancoNexus() {
 
   }
 }
+
+  async function handleOperacion(tipo) {
+    if (!data?.cuenta?.numeroCuenta) return;
+
+    const montoNum = Number(monto);
+    if (!monto.trim() || Number.isNaN(montoNum) || montoNum <= 0) {
+      setStatus({ type: "error", text: "Ingresa un monto válido mayor a cero." });
+      return;
+    }
+
+    // Validación: el retiro no puede ser mayor que el saldo disponible
+    if (tipo === "retiro" && data?.cuenta?.saldo != null && montoNum > data.cuenta.saldo) {
+      setStatus({ type: "error", text: "El monto a retirar supera el saldo disponible." });
+      return;
+    }
+
+    setActionLoading(true);
+    setError(null);
+    setStatus(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/${tipo}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          numeroCuenta: data.cuenta.numeroCuenta,
+          monto: montoNum,
+          descripcion: tipo === "deposito" ? "Depósito desde la interfaz" : "Retiro desde la interfaz"
+        })
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || `Error ${res.status}`);
+      }
+
+      setStatus({ type: "success", text: json.mensaje || "Operación realizada correctamente." });
+      setMonto("");
+      await handleConsulta();
+    } catch (err) {
+      console.error(err);
+      setStatus({ type: "error", text: err.message });
+    } finally {
+      setActionLoading(false);
+    }
+  }
 
   async function handleSample(num) {
   setNumeroCuenta(num);
@@ -312,6 +361,99 @@ export default function BancoNexus() {
                 CURP <strong style={{ color: "var(--color-text-secondary)", fontWeight: 500, fontFamily: "monospace" }}>{data.cliente?.curp}</strong>
               </span>
             </div>
+          </div>
+
+          <div style={{
+            background: "#F8FBFF",
+            border: "0.5px solid var(--color-border-tertiary)",
+            borderRadius: 12,
+            padding: "1.25rem",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12
+          }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "var(--color-text-secondary)" }}>
+                Operación en cuenta
+              </p>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--color-text-tertiary)" }}>
+                Ingresa el monto y elige si deseas depositar o retirar.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+              <label style={{ flex: 1, minWidth: 190 }}>
+                <span style={{ display: "block", marginBottom: 6, fontSize: 12, color: "var(--color-text-secondary)", fontWeight: 500 }}>
+                  Monto (MXN)
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0.00"
+                  value={monto}
+                  onChange={e => setMonto(e.target.value)}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border-tertiary)", fontFamily: "inherit", fontSize: 14 }}
+                />
+              </label>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => handleOperacion("deposito")}
+                  disabled={actionLoading || !monto.trim() || Number(monto) <= 0}
+                  style={{
+                    background: "#2B7CE4",
+                    color: "#FFF",
+                    border: "none",
+                    borderRadius: 8,
+                    padding: "0 18px",
+                    minHeight: 42,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: actionLoading ? "not-allowed" : "pointer",
+                    opacity: actionLoading ? 0.65 : 1,
+                    fontFamily: "inherit"
+                  }}
+                >
+                  {actionLoading ? "Procesando..." : "Depositar"}
+                </button>
+                <button
+                  onClick={() => handleOperacion("retiro")}
+                  disabled={
+                    actionLoading || !monto.trim() || Number(monto) <= 0 ||
+                    (data?.cuenta?.saldo != null && Number(monto) > data.cuenta.saldo)
+                  }
+                  style={{
+                    background: "#F0F0F0",
+                    color: "var(--color-text-primary)",
+                    border: "1px solid var(--color-border-tertiary)",
+                    borderRadius: 8,
+                    padding: "0 18px",
+                    minHeight: 42,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: actionLoading ? "not-allowed" : "pointer",
+                    opacity: actionLoading ? 0.65 : 1,
+                    fontFamily: "inherit"
+                  }}
+                >
+                  {actionLoading ? "Procesando..." : "Retirar"}
+                </button>
+              </div>
+            </div>
+
+            {status && (
+              <div style={{
+                borderRadius: 8,
+                padding: "12px 14px",
+                background: status.type === "success" ? "#E7F8EE" : "#FDF2F2",
+                border: status.type === "success" ? "1px solid #A5E1B7" : "1px solid #F1C0C0",
+                color: status.type === "success" ? "#1B5F2D" : "#8D2323",
+                fontSize: 13
+              }}>
+                {status.type === "success" ? "✅" : "⚠"} {status.text}
+              </div>
+            )}
           </div>
 
           {/* Transactions */}
