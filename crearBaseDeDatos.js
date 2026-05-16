@@ -1,6 +1,7 @@
+require("dotenv").config();
 const { MongoClient } = require("mongodb");
 
-const uri = "mongodb://localhost:27017/?directConnection=true";
+const uri = process.env.MONGO_URI;
 
 const client = new MongoClient(uri);
 
@@ -21,7 +22,7 @@ const clientes = [
     apellidoPaterno: "Martínez",
     apellidoMaterno: "Ruiz",
     curp: "MARJ950714HBCXZS7",
-    telefono: "6121234568",
+    telefono: "6121234568", 
     correo: "jose.martinez@nexus.com",
     direccion: "Los Cabos, Baja California Sur",
     fechaRegistro: new Date("2026-01-16"),
@@ -217,7 +218,14 @@ const transacciones = [
     monto: 5000,
     fecha: new Date("2026-02-01T09:00:00"),
     descripcion: "Depósito inicial",
-    saldoPosterior: 5000
+    saldoPosterior: 5000,
+    sucursal: {
+      codigo: "LPZ-001",
+      nombre: "Sucursal La Paz Centro",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "matriz"
+    }
   },
   {
     numeroCuenta: "1002003001",
@@ -225,7 +233,14 @@ const transacciones = [
     monto: 7500,
     fecha: new Date("2026-02-05T11:30:00"),
     descripcion: "Depósito en ventanilla",
-    saldoPosterior: 12500
+    saldoPosterior: 12500,
+    sucursal: {
+      codigo: "CSL-002",
+      nombre: "Sucursal Cabo San Lucas",
+      ciudad: "Los Cabos",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003002",
@@ -233,7 +248,14 @@ const transacciones = [
     monto: 20000,
     fecha: new Date("2026-02-02T10:15:00"),
     descripcion: "Transferencia recibida",
-    saldoPosterior: 20000
+    saldoPosterior: 20000,
+    sucursal: {
+      codigo: "LPZ-002",
+      nombre: "Sucursal La Paz Forjadores",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003002",
@@ -241,7 +263,14 @@ const transacciones = [
     monto: 1600,
     fecha: new Date("2026-02-06T13:20:00"),
     descripcion: "Retiro en cajero",
-    saldoPosterior: 18400
+    saldoPosterior: 18400,
+    sucursal: {
+      codigo: "CSL-002",
+      nombre: "Sucursal Cabo San Lucas",
+      ciudad: "Los Cabos",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003003",
@@ -249,7 +278,14 @@ const transacciones = [
     monto: 12000,
     fecha: new Date("2026-02-03T08:45:00"),
     descripcion: "Depósito de nómina",
-    saldoPosterior: 12000
+    saldoPosterior: 12000,
+    sucursal: {
+      codigo: "COM-004",
+      nombre: "Sucursal Comondú",
+      ciudad: "Comondú",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003003",
@@ -257,7 +293,14 @@ const transacciones = [
     monto: 2400,
     fecha: new Date("2026-02-07T18:10:00"),
     descripcion: "Pago de servicios",
-    saldoPosterior: 9600
+    saldoPosterior: 9600,
+    sucursal: {
+      codigo: "COM-004",
+      nombre: "Sucursal Comondú",
+      ciudad: "Comondú",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003004",
@@ -265,7 +308,14 @@ const transacciones = [
     monto: 18000,
     fecha: new Date("2026-02-04T09:30:00"),
     descripcion: "Depósito inicial",
-    saldoPosterior: 18000
+    saldoPosterior: 18000,
+    sucursal: {
+      codigo: "LPZ-001",
+      nombre: "Sucursal La Paz Centro",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "matriz"
+    }
   },
   {
     numeroCuenta: "1002003004",
@@ -273,7 +323,14 @@ const transacciones = [
     monto: 3000,
     fecha: new Date("2026-02-08T15:00:00"),
     descripcion: "Compra en línea",
-    saldoPosterior: 15000
+    saldoPosterior: 15000,
+    sucursal: {
+      codigo: "LPZ-002",
+      nombre: "Sucursal La Paz Forjadores",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003005",
@@ -281,7 +338,14 @@ const transacciones = [
     monto: 25000,
     fecha: new Date("2026-02-02T12:00:00"),
     descripcion: "Transferencia bancaria",
-    saldoPosterior: 25000
+    saldoPosterior: 25000,
+    sucursal: {
+      codigo: "LTO-005",
+      nombre: "Sucursal Loreto",
+      ciudad: "Loreto",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003005",
@@ -289,7 +353,14 @@ const transacciones = [
     monto: 2650,
     fecha: new Date("2026-02-09T16:40:00"),
     descripcion: "Pago con tarjeta",
-    saldoPosterior: 22350
+    saldoPosterior: 22350,
+    sucursal: {
+      codigo: "LTO-005",
+      nombre: "Sucursal Loreto",
+      ciudad: "Loreto",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003006",
@@ -297,7 +368,14 @@ const transacciones = [
     monto: 13000,
     fecha: new Date("2026-02-05T08:00:00"),
     descripcion: "Depósito de nómina",
-    saldoPosterior: 13000
+    saldoPosterior: 13000,
+    sucursal: {
+      codigo: "MUL-006",
+      nombre: "Sucursal Mulegé",
+      ciudad: "Mulegé",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003006",
@@ -305,7 +383,14 @@ const transacciones = [
     monto: 1250,
     fecha: new Date("2026-02-10T14:15:00"),
     descripcion: "Retiro en cajero",
-    saldoPosterior: 11750
+    saldoPosterior: 11750,
+    sucursal: {
+      codigo: "MUL-006",
+      nombre: "Sucursal Mulegé",
+      ciudad: "Mulegé",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003007",
@@ -313,7 +398,14 @@ const transacciones = [
     monto: 10000,
     fecha: new Date("2026-02-06T10:10:00"),
     descripcion: "Depósito inicial",
-    saldoPosterior: 10000
+    saldoPosterior: 10000,
+    sucursal: {
+      codigo: "LPZ-001",
+      nombre: "Sucursal La Paz Centro",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "matriz"
+    }
   },
   {
     numeroCuenta: "1002003007",
@@ -321,7 +413,14 @@ const transacciones = [
     monto: 1250,
     fecha: new Date("2026-02-11T17:20:00"),
     descripcion: "Compra en supermercado",
-    saldoPosterior: 8750
+    saldoPosterior: 8750,
+    sucursal: {
+      codigo: "LPZ-002",
+      nombre: "Sucursal La Paz Forjadores",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003008",
@@ -329,7 +428,14 @@ const transacciones = [
     monto: 32000,
     fecha: new Date("2026-02-03T11:00:00"),
     descripcion: "Transferencia recibida",
-    saldoPosterior: 32000
+    saldoPosterior: 32000,
+    sucursal: {
+      codigo: "CSL-002",
+      nombre: "Sucursal Cabo San Lucas",
+      ciudad: "Los Cabos",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003008",
@@ -337,7 +443,14 @@ const transacciones = [
     monto: 1500,
     fecha: new Date("2026-02-12T09:50:00"),
     descripcion: "Pago de servicio",
-    saldoPosterior: 30500
+    saldoPosterior: 30500,
+    sucursal: {
+      codigo: "CSL-002",
+      nombre: "Sucursal Cabo San Lucas",
+      ciudad: "Los Cabos",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003009",
@@ -345,7 +458,14 @@ const transacciones = [
     monto: 11500,
     fecha: new Date("2026-02-04T08:20:00"),
     descripcion: "Depósito de nómina",
-    saldoPosterior: 11500
+    saldoPosterior: 11500,
+    sucursal: {
+      codigo: "COM-004",
+      nombre: "Sucursal Comondú",
+      ciudad: "Comondú",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003009",
@@ -353,7 +473,14 @@ const transacciones = [
     monto: 1300,
     fecha: new Date("2026-02-13T19:00:00"),
     descripcion: "Pago en restaurante",
-    saldoPosterior: 10200
+    saldoPosterior: 10200,
+    sucursal: {
+      codigo: "SJC-003",
+      nombre: "Sucursal San José del Cabo",
+      ciudad: "Los Cabos",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003010",
@@ -361,7 +488,14 @@ const transacciones = [
     monto: 15000,
     fecha: new Date("2026-02-05T10:45:00"),
     descripcion: "Depósito inicial",
-    saldoPosterior: 15000
+    saldoPosterior: 15000,
+    sucursal: {
+      codigo: "LTO-005",
+      nombre: "Sucursal Loreto",
+      ciudad: "Loreto",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
   },
   {
     numeroCuenta: "1002003010",
@@ -369,7 +503,14 @@ const transacciones = [
     monto: 1520,
     fecha: new Date("2026-02-14T12:30:00"),
     descripcion: "Pago con tarjeta",
-    saldoPosterior: 13480
+    saldoPosterior: 13480,
+    sucursal: {
+      codigo: "LPZ-001",
+      nombre: "Sucursal La Paz Centro",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "matriz"
+    }
   }
 ];
 
@@ -420,7 +561,8 @@ async function crearBaseDeDatos() {
       monto: transaccion.monto,
       fecha: transaccion.fecha,
       descripcion: transaccion.descripcion,
-      saldoPosterior: transaccion.saldoPosterior
+      saldoPosterior: transaccion.saldoPosterior,
+      sucursal: transaccion.sucursal
     }));
 
     await coleccionTransacciones.insertMany(transaccionesConCuentaId);
@@ -429,6 +571,8 @@ async function crearBaseDeDatos() {
     await coleccionCuentas.createIndex({ numeroCuenta: 1 }, { unique: true });
     await coleccionCuentas.createIndex({ clienteId: 1 });
     await coleccionTransacciones.createIndex({ cuentaId: 1 });
+    await coleccionTransacciones.createIndex({ "sucursal.codigo": 1 });
+    await coleccionTransacciones.createIndex({ fecha: 1 });
 
     console.log("Base de datos nexus_banca creada correctamente");
     console.log(`Clientes insertados: ${clientes.length}`);
