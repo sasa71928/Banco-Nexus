@@ -4,6 +4,8 @@ const cors    = require("cors");
 const { connectDB } = require("./db");
 
 const cuentaRoutes = require("./routes/cuenta");
+const depositoRoutes = require("./routes/deposito");
+const retiroRoutes = require("./routes/retiro");
 const testDBRoutes = require("./routes/testDB");
 
 const app = express();
@@ -18,6 +20,8 @@ app.get("/", (req, res) => {
 
 // Rutas
 app.use("/api/cuenta", cuentaRoutes);
+app.use("/api/deposito" , depositoRoutes);
+app.use("/api/retiro" , retiroRoutes);
 app.use("/api/test-db", testDBRoutes);
 
 // Ruta no encontrada
@@ -35,6 +39,8 @@ connectDB()
       console.log(`   GET /`);
       console.log(`   GET /api/test-db`);
       console.log(`   GET /api/cuenta/:cuenta`);
+      console.log(`   POST /api/deposito`);
+      console.log(`   POST /api/retiro`);
     });
   })
   .catch((err) => {
