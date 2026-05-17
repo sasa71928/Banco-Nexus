@@ -7,6 +7,7 @@ const cuentaRoutes = require("./routes/cuenta");
 const depositoRoutes = require("./routes/deposito");
 const retiroRoutes = require("./routes/retiro");
 const testDBRoutes = require("./routes/testDB");
+const historialRoutes = require("./routes/historial");
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use("/api/cuenta", cuentaRoutes);
 app.use("/api/deposito" , depositoRoutes);
 app.use("/api/retiro" , retiroRoutes);
 app.use("/api/test-db", testDBRoutes);
+app.use("/api/historial", historialRoutes);
 
 // Ruta no encontrada
 app.use((req, res) => {
