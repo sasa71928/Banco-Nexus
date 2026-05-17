@@ -1,0 +1,2253 @@
+================================================================================
+                    BANCO NEXUS - CÓDIGO COMPLETO Y DESCRIPCIONES
+================================================================================
+Este archivo contiene la descripción detallada de la arquitectura, estructura
+de directorios y el código fuente completo de todos los archivos del proyecto 
+"Banco Nexus". Es ideal para revisar, auditar, migrar o respaldar el proyecto.
+
+--------------------------------------------------------------------------------
+1. DESCRIPCIÓN GENERAL DEL PROYECTO
+--------------------------------------------------------------------------------
+Banco Nexus es un sistema bancario distribuido y simulado diseñado para demostrar:
+- Alta Disponibilidad y Replicación de Datos: Uso de un Replica Set de MongoDB
+  con 3 nodos distribuidos en red local (mongo1, mongo2, mongo3).
+- Tolerancia a Fallos y Conmutación por Error (Failover): Elección automática 
+  de un nuevo nodo PRIMARY cuando el activo se cae, manteniendo al backend 
+  en funcionamiento.
+- API REST robusta: Backend en Node.js + Express que maneja de manera atómica
+  operaciones de saldo, depósitos y retiros.
+- Interfaz Premium: Frontend moderno en React y Vite con diseño responsivo, 
+  gráficos informativos, badges de estatus de cuentas, avatares generados
+  automáticamente a partir de las iniciales y atajos de acceso rápido.
+
+--------------------------------------------------------------------------------
+2. ARQUITECTURA DEL SISTEMA DISTRIBUIDO
+--------------------------------------------------------------------------------
+El sistema está distribuido de la siguiente manera:
+
+- PC 1 (192.168.0.101) -> Nodo de base de datos "mongo1" (PRIMARY/SECONDARY)
+- PC 2 (192.168.0.102) -> Nodo de base de datos "mongo2" (PRIMARY/SECONDARY)
+- PC 3 (192.168.0.103) -> Nodo de base de datos "mongo3" (PRIMARY/SECONDARY)
+- PC 4 (192.168.0.104) -> Servidor de Backend Express (Puerto 3000)
+                          Cliente Frontend de React (Puerto local de Vite)
+
+La cadena de conexión de MongoDB utiliza:
+mongodb://192.168.0.101:27017,192.168.0.102:27017,192.168.0.103:27017/nexus_banca?replicaSet=rs0
+Esto permite que el driver de Node.js monitoree la salud de todos los nodos y redirija 
+las solicitudes automáticamente si el nodo PRIMARY cambia.
+
+--------------------------------------------------------------------------------
+3. ÁRBOL DE DIRECTORIOS DEL PROYECTO
+--------------------------------------------------------------------------------
+Banco-Nexus/
+├── Banco_Nexus_Completo.txt          # [Este Archivo] Código completo y guía
+├── crearBaseDeDatos.js               # Script para inicializar la DB con mock data
+├── docker-compose.yml                # Configuración local de orquestación de DB (3 Nodos)
+├── index.html                        # Punto de entrada HTML para el frontend
+├── package.json                      # Configuración de dependencias de frontend y scripts de Vite
+├── vite.config.js                    # Configuración del empaquetador Vite con React
+├── README.md                         # Guía de instalación y despliegue del Replica Set
+├── .gitignore                        # Archivos excluidos de control de versiones
+│
+├── backend/
+│   ├── db.js                         # Módulo de conexión reutilizable a MongoDB
+│   ├── dockerfile                    # Dockerfile para contenedorizar el backend
+│   ├── package.json                  # Dependencias del backend (express, mongodb, cors)
+│   ├── server.js                     # Servidor Express principal y orquestador de rutas
+│   └── routes/
+│       ├── cuenta.js                 # API para consulta de saldos y transacciones
+│       ├── deposito.js               # API para registrar depósitos y actualizar saldos
+│       ├── retiro.js                 # API para registrar retiros y validar saldos
+│       └── testDB.js                 # API de diagnóstico de conexión de la DB
+│
+└── src/
+    ├── main.jsx                      # Punto de entrada de React que renderiza App.jsx
+    └── App.jsx                       # Componente principal de la interfaz (Banco Nexus UI)
+
+--------------------------------------------------------------------------------
+4. CATÁLOGO Y DESCRIPCIÓN DE ARCHIVOS
+--------------------------------------------------------------------------------
+
+[A] ARCHIVOS DE LA RAÍZ (CONFIGURACIONES Y CONFIGURACIÓN INICIAL):
+1. `.gitignore`
+   Excluye directorios pesados (node_modules), variables de entorno (.env) y
+   logs del control de versiones de Git.
+2. `package.json`
+   Define los metadatos del proyecto raíz, los scripts para levantar el frontend 
+   con Vite (`npm run dev`) y las dependencias principales (React 19, MongoDB driver, Express).
+3. `vite.config.js`
+   Habilita el plugin oficial de React para la compilación rápida y recarga en caliente de Vite.
+4. `index.html`
+   Estructura HTML básica de entrada del frontend. Define el contenedor `<div id="root">` 
+   donde React monta la aplicación.
+5. `crearBaseDeDatos.js`
+   Script interactivo que se ejecuta localmente (`node crearBaseDeDatos.js`). Se conecta a 
+   MongoDB, limpia colecciones previas, inserta 10 clientes de muestra, 10 cuentas de banco 
+   (débito, ahorro y nómina) y un historial de transacciones para iniciar el proyecto con 
+   información real de prueba. También crea índices en CURP, número de cuenta y fechas para optimizar búsquedas.
+6. `docker-compose.yml`
+   Orquestador de Docker para levantar localmente los tres servicios de MongoDB en la misma 
+   máquina simulando los 3 nodos independientes (mongo1, mongo2 y mongo3), y enlaza el backend 
+   configurando las dependencias mediante `depends_on`.
+7. `README.md`
+   Documento explicativo en español que detalla paso a paso el proceso de configuración de la 
+   red distribuida real: asignación de IPs estáticas en Windows/Linux, apertura de puertos 
+   en el Firewall Defender, comandos de Docker para levantar réplicas y cómo realizar pruebas 
+   de tolerancia a fallos apagando el nodo PRIMARY.
+
+[B] ARCHIVOS DEL BACKEND (`backend/`):
+8. `backend/package.json`
+   Contiene las dependencias exclusivas de la API: Express, CORS para solicitudes cruzadas, 
+   dotenv para manejar credenciales y variables de entorno, y nodemon en desarrollo.
+9. `backend/dockerfile`
+   Receta de compilación Docker basada en Node 22 para empaquetar la API, instalar dependencias, 
+   exponer el puerto 3000 y ejecutar el servidor web.
+10. `backend/db.js`
+    Implementa el patrón Singleton para la conexión a la base de datos distribuida de MongoDB. 
+    Expone `connectDB()` para inicializar el pool de conexiones y `getDB()` para obtener la 
+    referencia activa en las rutas de forma asíncrona.
+11. `backend/server.js`
+    Orquesta el ciclo de vida del backend. Carga middlewares globales de seguridad/análisis de JSON 
+    (CORS e express.json), asocia los enrutadores de la API e inicia el servidor en el puerto 
+    3000 únicamente si la conexión a la base de datos se completa satisfactoriamente.
+12. `backend/routes/cuenta.js`
+    Enrutador REST para consultar el detalle de una cuenta. Realiza una agregación lógica: 
+    busca la cuenta en la colección `cuentas`, busca los datos del propietario en `clientes` 
+    usando la relación `clienteId` y recupera el historial completo de movimientos en `transacciones`.
+13. `backend/routes/deposito.js`
+    Endpoint POST (`/api/deposito`) para registrar depósitos de dinero. Valida los campos de entrada, 
+    busca si la cuenta existe y está activa, incrementa el saldo en la base de datos en una operación 
+    actualizada y registra la transacción con tipo "deposito" para mantener la consistencia.
+14. `backend/routes/retiro.js`
+    Endpoint POST (`/api/retiro`) para registrar retiros de dinero. Realiza validaciones estrictas: 
+    verifica que el monto a retirar sea positivo, que la cuenta esté activa y que el saldo disponible 
+    sea suficiente para cubrir la operación. Disminuye el saldo y registra la transacción de retiro.
+15. `backend/routes/testDB.js`
+    Diagnóstico rápido de salud de la base de datos. Cuenta los documentos de las colecciones 
+    `clientes`, `cuentas` y `transacciones` para comprobar el rendimiento de lectura del Replica Set.
+
+[C] ARCHIVOS DEL FRONTEND (`src/`):
+16. `src/main.jsx`
+    Script inicial que importa y monta el componente reactivo principal (`App.jsx`) en el árbol DOM.
+17. `src/App.jsx`
+    Toda la lógica visual y de interacción de Banco Nexus. Implementa:
+    - Estado reactivo para buscar números de cuenta.
+    - Consulta automática al backend para pintar saldos, propietario, CURP y transacciones.
+    - Componentes de diseño internos como `Avatar` para generar avatares modernos dinámicos basados 
+      en iniciales del cliente, `TipoBadge` para diferenciar visualmente cuentas de débito, nómina o ahorro, 
+      y `MetricCard` para resumir saldos, total de depósitos y retiros.
+    - Formulario de operaciones bancarias para depositar/retirar dinero al instante, mostrando 
+      mensajes de éxito y error amigables.
+    - Panel de acceso rápido con números de cuenta precargados para demostraciones ágiles del sistema distribuido.
+
+--------------------------------------------------------------------------------
+5. CÓDIGO FUENTE DE TODOS LOS ARCHIVOS DEL PROYECTO
+--------------------------------------------------------------------------------
+
+================================================================================
+ARCHIVO: .gitignore
+================================================================================
+node_modules/
+.env
+*.log
+
+================================================================================
+ARCHIVO: package.json
+================================================================================
+{
+  "name": "banconexus",
+  "version": "1.0.0",
+  "description": "Banco-Nexus - Proyecto de base de datos distribuida con Replica Set de MongoDB y React.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongodb": "^7.2.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sasa71928/Banco-Nexus.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sasa71928/Banco-Nexus/issues"
+  },
+  "homepage": "https://github.com/sasa71928/Banco-Nexus#readme"
+}
+
+================================================================================
+ARCHIVO: vite.config.js
+================================================================================
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+})
+
+================================================================================
+ARCHIVO: index.html
+================================================================================
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Banco Nexus</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+
+================================================================================
+ARCHIVO: crearBaseDeDatos.js
+================================================================================
+require("dotenv").config();
+const { MongoClient } = require("mongodb");
+
+const uri = process.env.MONGO_URI;
+
+const client = new MongoClient(uri);
+
+const clientes = [
+  {
+    nombre: "María",
+    apellidoPaterno: "López",
+    apellidoMaterno: "García",
+    curp: "LOGM010203MSPRRNA4",
+    telefono: "6121234567",
+    correo: "maria.lopez@nexus.com",
+    direccion: "La Paz, Baja California Sur",
+    fechaRegistro: new Date("2026-01-15"),
+    estatus: "activo"
+  },
+  {
+    nombre: "José",
+    apellidoPaterno: "Martínez",
+    apellidoMaterno: "Ruiz",
+    curp: "MARJ950714HBCXZS7",
+    telefono: "6121234568", 
+    correo: "jose.martinez@nexus.com",
+    direccion: "Los Cabos, Baja California Sur",
+    fechaRegistro: new Date("2026-01-16"),
+    estatus: "activo"
+  },
+  {
+    nombre: "Ana",
+    apellidoPaterno: "Torres",
+    apellidoMaterno: "Hernández",
+    curp: "TOHA980621MPLRNN5",
+    telefono: "6121234569",
+    correo: "ana.torres@nexus.com",
+    direccion: "Comondú, Baja California Sur",
+    fechaRegistro: new Date("2026-01-17"),
+    estatus: "activo"
+  },
+  {
+    nombre: "Carlos",
+    apellidoPaterno: "Sánchez",
+    apellidoMaterno: "Pérez",
+    curp: "SAPC920315HDFNRL8",
+    telefono: "6121234570",
+    correo: "carlos.sanchez@nexus.com",
+    direccion: "La Paz, Baja California Sur",
+    fechaRegistro: new Date("2026-01-18"),
+    estatus: "activo"
+  },
+  {
+    nombre: "Fernanda",
+    apellidoPaterno: "Ramírez",
+    apellidoMaterno: "Soto",
+    curp: "RASF990808MBCMTR6",
+    telefono: "6121234571",
+    correo: "fernanda.ramirez@nexus.com",
+    direccion: "Loreto, Baja California Sur",
+    fechaRegistro: new Date("2026-01-19"),
+    estatus: "activo"
+  },
+  {
+    nombre: "Luis",
+    apellidoPaterno: "Gómez",
+    apellidoMaterno: "Navarro",
+    curp: "GONL940127HSLVVR3",
+    telefono: "6121234572",
+    correo: "luis.gomez@nexus.com",
+    direccion: "Mulegé, Baja California Sur",
+    fechaRegistro: new Date("2026-01-20"),
+    estatus: "activo"
+  },
+  {
+    nombre: "Daniela",
+    apellidoPaterno: "Cruz",
+    apellidoMaterno: "Ortega",
+    curp: "CUOD000411MBCRRG9",
+    telefono: "6121234573",
+    correo: "daniela.cruz@nexus.com",
+    direccion: "La Paz, Baja California Sur",
+    fechaRegistro: new Date("2026-01-21"),
+    estatus: "activo"
+  },
+  {
+    nombre: "Miguel",
+    apellidoPaterno: "Herrera",
+    apellidoMaterno: "Castro",
+    curp: "HECM970922HJCNRS2",
+    telefono: "6121234574",
+    correo: "miguel.herrera@nexus.com",
+    direccion: "Los Cabos, Baja California Sur",
+    fechaRegistro: new Date("2026-01-22"),
+    estatus: "activo"
+  },
+  {
+    nombre: "Sofía",
+    apellidoPaterno: "Mendoza",
+    apellidoMaterno: "Flores",
+    curp: "MEFS030115MBSNLR1",
+    telefono: "6121234575",
+    correo: "sofia.mendoza@nexus.com",
+    direccion: "Comondú, Baja California Sur",
+    fechaRegistro: new Date("2026-01-23"),
+    estatus: "activo"
+  },
+  {
+    nombre: "Ricardo",
+    apellidoPaterno: "Vázquez",
+    apellidoMaterno: "Molina",
+    curp: "VAMR960530HPLZRC4",
+    telefono: "6121234576",
+    correo: "ricardo.vazquez@nexus.com",
+    direccion: "Loreto, Baja California Sur",
+    fechaRegistro: new Date("2026-01-24"),
+    estatus: "activo"
+  }
+];
+
+const cuentas = [
+  {
+    numeroCuenta: "1002003001",
+    tipoCuenta: "debito",
+    saldo: 12500,
+    moneda: "MXN",
+    fechaApertura: new Date("2026-01-15"),
+    estatus: "activa",
+    curpCliente: "LOGM010203MSPRRNA4"
+  },
+  {
+    numeroCuenta: "1002003002",
+    tipoCuenta: "ahorro",
+    saldo: 18400,
+    moneda: "MXN",
+    fechaApertura: new Date("2026-01-16"),
+    estatus: "activa",
+    curpCliente: "MARJ950714HBCXZS7"
+  },
+  {
+    numeroCuenta: "1002003003",
+    tipoCuenta: "nomina",
+    saldo: 9600,
+    moneda: "MXN",
+    fechaApertura: new Date("2026-01-17"),
+    estatus: "activa",
+    curpCliente: "TOHA980621MPLRNN5"
+  },
+  {
+    numeroCuenta: "1002003004",
+    tipoCuenta: "debito",
+    saldo: 15000,
+    moneda: "MXN",
+    fechaApertura: new Date("2026-01-18"),
+    estatus: "activa",
+    curpCliente: "SAPC920315HDFNRL8"
+  },
+  {
+    numeroCuenta: "1002003005",
+    tipoCuenta: "ahorro",
+    saldo: 22350,
+    moneda: "MXN",
+    fechaApertura: new Date("2026-01-19"),
+    estatus: "activa",
+    curpCliente: "RASF990808MBCMTR6"
+  },
+  {
+    numeroCuenta: "1002003006",
+    tipoCuenta: "nomina",
+    saldo: 11750,
+    moneda: "MXN",
+    fechaApertura: new Date("2026-01-20"),
+    estatus: "activa",
+    curpCliente: "GONL940127HSLVVR3"
+  },
+  {
+    numeroCuenta: "1002003007",
+    tipoCuenta: "debito",
+    saldo: 8750,
+    moneda: "MXN",
+    fechaApertura: new Date("2026-01-21"),
+    estatus: "activa",
+    curpCliente: "CUOD000411MBCRRG9"
+  },
+  {
+    numeroCuenta: "1002003008",
+    tipoCuenta: "ahorro",
+    saldo: 30500,
+    moneda: "MXN",
+    fechaApertura: new Date("2026-01-22"),
+    estatus: "activa",
+    curpCliente: "HECM970922HJCNRS2"
+  },
+  {
+    numeroCuenta: "1002003009",
+    tipoCuenta: "nomina",
+    saldo: 10200,
+    moneda: "MXN",
+    fechaApertura: new Date("2026-01-23"),
+    estatus: "activa",
+    curpCliente: "MEFS030115MBSNLR1"
+  },
+  {
+    numeroCuenta: "1002003010",
+    tipoCuenta: "debito",
+    saldo: 13480,
+    moneda: "MXN",
+    fechaApertura: new Date("2026-01-24"),
+    estatus: "activa",
+    curpCliente: "VAMR960530HPLZRC4"
+  }
+];
+
+const transacciones = [
+  {
+    numeroCuenta: "1002003001",
+    tipo: "deposito",
+    monto: 5000,
+    fecha: new Date("2026-02-01T09:00:00"),
+    descripcion: "Depósito inicial",
+    saldoPosterior: 5000,
+    sucursal: {
+      codigo: "LPZ-001",
+      nombre: "Sucursal La Paz Centro",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "matriz"
+    }
+  },
+  {
+    numeroCuenta: "1002003001",
+    tipo: "deposito",
+    monto: 7500,
+    fecha: new Date("2026-02-05T11:30:00"),
+    descripcion: "Depósito en ventanilla",
+    saldoPosterior: 12500,
+    sucursal: {
+      codigo: "CSL-002",
+      nombre: "Sucursal Cabo San Lucas",
+      ciudad: "Los Cabos",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003002",
+    tipo: "deposito",
+    monto: 20000,
+    fecha: new Date("2026-02-02T10:15:00"),
+    descripcion: "Transferencia recibida",
+    saldoPosterior: 20000,
+    sucursal: {
+      codigo: "LPZ-002",
+      nombre: "Sucursal La Paz Forjadores",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003002",
+    tipo: "retiro",
+    monto: 1600,
+    fecha: new Date("2026-02-06T13:20:00"),
+    descripcion: "Retiro en cajero",
+    saldoPosterior: 18400,
+    sucursal: {
+      codigo: "CSL-002",
+      nombre: "Sucursal Cabo San Lucas",
+      ciudad: "Los Cabos",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003003",
+    tipo: "deposito",
+    monto: 12000,
+    fecha: new Date("2026-02-03T08:45:00"),
+    descripcion: "Depósito de nómina",
+    saldoPosterior: 12000,
+    sucursal: {
+      codigo: "COM-004",
+      nombre: "Sucursal Comondú",
+      ciudad: "Comondú",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003003",
+    tipo: "retiro",
+    monto: 2400,
+    fecha: new Date("2026-02-07T18:10:00"),
+    descripcion: "Pago de servicios",
+    saldoPosterior: 9600,
+    sucursal: {
+      codigo: "COM-004",
+      nombre: "Sucursal Comondú",
+      ciudad: "Comondú",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003004",
+    tipo: "deposito",
+    monto: 18000,
+    fecha: new Date("2026-02-04T09:30:00"),
+    descripcion: "Depósito inicial",
+    saldoPosterior: 18000,
+    sucursal: {
+      codigo: "LPZ-001",
+      nombre: "Sucursal La Paz Centro",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "matriz"
+    }
+  },
+  {
+    numeroCuenta: "1002003004",
+    tipo: "retiro",
+    monto: 3000,
+    fecha: new Date("2026-02-08T15:00:00"),
+    descripcion: "Compra en línea",
+    saldoPosterior: 15000,
+    sucursal: {
+      codigo: "LPZ-002",
+      nombre: "Sucursal La Paz Forjadores",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003005",
+    tipo: "deposito",
+    monto: 25000,
+    fecha: new Date("2026-02-02T12:00:00"),
+    descripcion: "Transferencia bancaria",
+    saldoPosterior: 25000,
+    sucursal: {
+      codigo: "LTO-005",
+      nombre: "Sucursal Loreto",
+      ciudad: "Loreto",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003005",
+    tipo: "retiro",
+    monto: 2650,
+    fecha: new Date("2026-02-09T16:40:00"),
+    descripcion: "Pago con tarjeta",
+    saldoPosterior: 22350,
+    sucursal: {
+      codigo: "LTO-005",
+      nombre: "Sucursal Loreto",
+      ciudad: "Loreto",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003006",
+    tipo: "deposito",
+    monto: 13000,
+    fecha: new Date("2026-02-05T08:00:00"),
+    descripcion: "Depósito de nómina",
+    saldoPosterior: 13000,
+    sucursal: {
+      codigo: "MUL-006",
+      nombre: "Sucursal Mulegé",
+      ciudad: "Mulegé",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003006",
+    tipo: "retiro",
+    monto: 1250,
+    fecha: new Date("2026-02-10T14:15:00"),
+    descripcion: "Retiro en cajero",
+    saldoPosterior: 11750,
+    sucursal: {
+      codigo: "MUL-006",
+      nombre: "Sucursal Mulegé",
+      ciudad: "Mulegé",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003007",
+    tipo: "deposito",
+    monto: 10000,
+    fecha: new Date("2026-02-06T10:10:00"),
+    descripcion: "Depósito inicial",
+    saldoPosterior: 10000,
+    sucursal: {
+      codigo: "LPZ-001",
+      nombre: "Sucursal La Paz Centro",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "matriz"
+    }
+  },
+  {
+    numeroCuenta: "1002003007",
+    tipo: "retiro",
+    monto: 1250,
+    fecha: new Date("2026-02-11T17:20:00"),
+    descripcion: "Compra en supermercado",
+    saldoPosterior: 8750,
+    sucursal: {
+      codigo: "LPZ-002",
+      nombre: "Sucursal La Paz Forjadores",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003008",
+    tipo: "deposito",
+    monto: 32000,
+    fecha: new Date("2026-02-03T11:00:00"),
+    descripcion: "Transferencia recibida",
+    saldoPosterior: 32000,
+    sucursal: {
+      codigo: "CSL-002",
+      nombre: "Sucursal Cabo San Lucas",
+      ciudad: "Los Cabos",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003008",
+    tipo: "retiro",
+    monto: 1500,
+    fecha: new Date("2026-02-12T09:50:00"),
+    descripcion: "Pago de servicio",
+    saldoPosterior: 30500,
+    sucursal: {
+      codigo: "CSL-002",
+      nombre: "Sucursal Cabo San Lucas",
+      ciudad: "Los Cabos",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003009",
+    tipo: "deposito",
+    monto: 11500,
+    fecha: new Date("2026-02-04T08:20:00"),
+    descripcion: "Depósito de nómina",
+    saldoPosterior: 11500,
+    sucursal: {
+      codigo: "COM-004",
+      nombre: "Sucursal Comondú",
+      ciudad: "Comondú",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003009",
+    tipo: "retiro",
+    monto: 1300,
+    fecha: new Date("2026-02-13T19:00:00"),
+    descripcion: "Pago en restaurante",
+    saldoPosterior: 10200,
+    sucursal: {
+      codigo: "SJC-003",
+      nombre: "Sucursal San José del Cabo",
+      ciudad: "Los Cabos",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003010",
+    tipo: "deposito",
+    monto: 15000,
+    fecha: new Date("2026-02-05T10:45:00"),
+    descripcion: "Depósito inicial",
+    saldoPosterior: 15000,
+    sucursal: {
+      codigo: "LTO-005",
+      nombre: "Sucursal Loreto",
+      ciudad: "Loreto",
+      estado: "Baja California Sur",
+      tipoOrigen: "remota"
+    }
+  },
+  {
+    numeroCuenta: "1002003010",
+    tipo: "retiro",
+    monto: 1520,
+    fecha: new Date("2026-02-14T12:30:00"),
+    descripcion: "Pago con tarjeta",
+    saldoPosterior: 13480,
+    sucursal: {
+      codigo: "LPZ-001",
+      nombre: "Sucursal La Paz Centro",
+      ciudad: "La Paz",
+      estado: "Baja California Sur",
+      tipoOrigen: "matriz"
+    }
+  }
+];
+
+async function crearBaseDeDatos() {
+  try {
+    await client.connect();
+    console.log("Conectado a MongoDB");
+
+    const db = client.db("nexus_banca");
+
+    const coleccionClientes = db.collection("clientes");
+    const coleccionCuentas = db.collection("cuentas");
+    const coleccionTransacciones = db.collection("transacciones");
+
+    await coleccionClientes.deleteMany({});
+    await coleccionCuentas.deleteMany({});
+    await coleccionTransacciones.deleteMany({});
+
+    const resultadoClientes = await coleccionClientes.insertMany(clientes);
+    const clientesInsertados = await coleccionClientes.find({}).toArray();
+
+    const mapaClientes = {};
+    clientesInsertados.forEach(cliente => {
+      mapaClientes[cliente.curp] = cliente._id;
+    });
+
+    const cuentasConClienteId = cuentas.map(cuenta => ({
+      clienteId: mapaClientes[cuenta.curpCliente],
+      numeroCuenta: cuenta.numeroCuenta,
+      tipoCuenta: cuenta.tipoCuenta,
+      saldo: cuenta.saldo,
+      moneda: cuenta.moneda,
+      fechaApertura: cuenta.fechaApertura,
+      estatus: cuenta.estatus
+    }));
+
+    await coleccionCuentas.insertMany(cuentasConClienteId);
+    const cuentasInsertadas = await coleccionCuentas.find({}).toArray();
+
+    const mapaCuentas = {};
+    cuentasInsertadas.forEach(cuenta => {
+      mapaCuentas[cuenta.numeroCuenta] = cuenta._id;
+    });
+
+    const transaccionesConCuentaId = transacciones.map(transaccion => ({
+      cuentaId: mapaCuentas[transaccion.numeroCuenta],
+      tipo: transaccion.tipo,
+      monto: transaccion.monto,
+      fecha: transaccion.fecha,
+      descripcion: transaccion.descripcion,
+      saldoPosterior: transaccion.saldoPosterior,
+      sucursal: transaccion.sucursal
+    }));
+
+    await coleccionTransacciones.insertMany(transaccionesConCuentaId);
+
+    await coleccionClientes.createIndex({ curp: 1 }, { unique: true });
+    await coleccionCuentas.createIndex({ numeroCuenta: 1 }, { unique: true });
+    await coleccionCuentas.createIndex({ clienteId: 1 });
+    await coleccionTransacciones.createIndex({ cuentaId: 1 });
+    await coleccionTransacciones.createIndex({ "sucursal.codigo": 1 });
+    await coleccionTransacciones.createIndex({ fecha: 1 });
+
+    console.log("Base de datos nexus_banca creada correctamente");
+    console.log(`Clientes insertados: ${clientes.length}`);
+    console.log(`Cuentas insertadas: ${cuentas.length}`);
+    console.log(`Transacciones insertadas: ${transacciones.length}`);
+  } catch (error) {
+    console.error("Error al crear la base de datos:", error);
+  } finally {
+    await client.close();
+  }
+}
+
+crearBaseDeDatos();
+
+================================================================================
+ARCHIVO: docker-compose.yml
+================================================================================
+version: '3.8'
+
+services:
+  mongo1:
+    image: mongo:latest
+    container_name: mongo1
+    command: mongod --replSet rs0 --bind_ip_all
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo1_data:/data/db
+
+  mongo2:
+    image: mongo:latest
+    container_name: mongo2
+    command: mongod --replSet rs0 --bind_ip_all
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo2_data:/data/db
+
+  mongo3:
+    image: mongo:latest
+    container_name: mongo3
+    command: mongod --replSet rs0 --bind_ip_all
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo3_data:/data/db
+      
+
+  backend:
+    build: ./backend
+    container_name: server
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    environment:
+      MONGO_URI: mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0
+
+volumes:
+  mongo1_data:
+  mongo2_data:
+  mongo3_data:
+
+================================================================================
+ARCHIVO: README.md
+================================================================================
+# Banco-Nexus
+
+1. Clonar o hacer pull del repositorio
+2. Ejecutar `npm install`
+3. Levantar MongoDB con Docker:
+   `docker run --name mongodb -p 27017:27017 -d mongodb/mongodb-community-server:latest`
+4. Ejecutar el script de inicialización:
+   `node crearBaseDeDatos.js`
+
+# Banco Nexus — Replica Set MongoDB con 3 Nodos
+
+## Objetivo
+
+Implementar un sistema distribuido utilizando MongoDB Replica Set con 3 nodos distribuidos en distintos equipos para demostrar:
+
+* Replicación de datos
+* Alta disponibilidad
+* Tolerancia a fallos
+* Elección automática de PRIMARY
+* Comunicación distribuida real
+
+---
+
+# Arquitectura
+
+| Nodo     | Equipo                  | Rol                 | IP Ejemplo    |
+| -------- | ----------------------- | ------------------- | ------------- |
+| mongo1   | PC 1                    | PRIMARY / SECONDARY | 192.168.0.101 |
+| mongo2   | PC 2                    | PRIMARY / SECONDARY | 192.168.0.102 |
+| mongo3   | PC 3                    | PRIMARY / SECONDARY | 192.168.0.103 |
+| backend  | PC 4 o cualquier equipo | API Node.js         | 192.168.0.104 |
+| frontend | PC 4 o cualquier equipo | React / App         | 192.168.0.104 |
+
+---
+
+# Requisitos
+
+## Software requerido
+
+En cada equipo:
+
+* Docker Desktop
+* MongoDB Image
+* Node.js (solo backend)
+* npm
+* Git
+
+---
+
+# Paso 1 — Configurar IP fija
+
+Cada equipo debe tener una IP fija dentro de la red local.
+
+Ejemplo:
+
+| Equipo  | IP            |
+| ------- | ------------- |
+| PC1     | 192.168.0.101 |
+| PC2     | 192.168.0.102 |
+| PC3     | 192.168.0.103 |
+| Backend | 192.168.0.104 |
+
+IMPORTANTE:
+
+Las IPs no deben cambiar.
+
+---
+
+# Paso 2 — Abrir firewall
+
+En Windows:
+
+1. Abrir “Firewall de Windows Defender”
+2. Configuración avanzada
+3. Reglas de entrada
+4. Nueva regla
+5. Puerto
+6. TCP
+7. Puerto:
+
+```txt
+27017
+```
+
+8. Permitir conexión
+9. Aplicar a:
+
+* Dominio
+* Privado
+* Público
+
+10. Guardar
+
+---
+
+# Paso 3 — Verificar conectividad
+
+Desde cualquier equipo:
+
+```bash
+ping 192.168.0.101
+ping 192.168.0.102
+ping 192.168.0.103
+```
+
+También:
+
+```powershell
+Test-NetConnection 192.168.0.102 -Port 27017
+```
+
+Debe mostrar:
+
+```txt
+TcpTestSucceeded : True
+```
+
+---
+
+# Paso 4 — Levantar MongoDB en cada equipo
+
+## Equipo 1
+
+```bash
+docker run -d ^
+--name mongo1 ^
+-p 27017:27017 ^
+-v mongo1_data:/data/db ^
+mongo:latest ^
+mongod --replSet rs0 --bind_ip_all
+```
+
+---
+
+## Equipo 2
+
+```bash
+docker run -d ^
+--name mongo2 ^
+-p 27017:27017 ^
+-v mongo2_data:/data/db ^
+mongo:latest ^
+mongod --replSet rs0 --bind_ip_all
+```
+
+---
+
+## Equipo 3
+
+```bash
+docker run -d ^
+--name mongo3 ^
+-p 27017:27017 ^
+-v mongo3_data:/data/db ^
+mongo:latest ^
+mongod --replSet rs0 --bind_ip_all
+```
+
+---
+
+# Paso 5 — Inicializar Replica Set
+
+Entrar a mongosh desde cualquier nodo:
+
+```bash
+docker exec -it mongo1 mongosh
+```
+
+Ejecutar:
+
+```js
+rs.initiate({
+  _id: "rs0",
+  members: [
+    { _id: 0, host: "192.168.0.101:27017" },
+    { _id: 1, host: "192.168.0.102:27017" },
+    { _id: 2, host: "192.168.0.103:27017" }
+  ]
+})
+```
+
+---
+
+# Paso 6 — Verificar Replica Set
+
+Ejecutar:
+
+```js
+rs.status()
+```
+
+Debe aparecer:
+
+```txt
+1 PRIMARY
+2 SECONDARY
+```
+
+Ejemplo:
+
+```txt
+mongo1 -> PRIMARY
+mongo2 -> SECONDARY
+mongo3 -> SECONDARY
+```
+
+---
+
+# Paso 7 — Configurar backend
+
+## URI de conexión
+
+```env
+MONGO_URI=mongodb://192.168.0.101:27017,192.168.0.102:27017,192.168.0.103:27017/nexus_banca?replicaSet=rs0
+```
+
+IMPORTANTE:
+
+NO usar:
+
+```txt
+directConnection=true
+```
+
+porque desactiva el failover.
+
+---
+
+# Paso 8 — Configurar servidor Express
+
+## server.js
+
+```js
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor iniciado`);
+});
+```
+
+---
+
+# Paso 9 — Configurar frontend
+
+## React
+
+```js
+const API_BASE = "http://192.168.0.104:3000";
+```
+
+---
+
+# Paso 10 — Prueba de replicación
+
+Insertar un documento:
+
+```js
+db.clientes.insertOne({
+  nombre: "Juan",
+  saldo: 1000
+})
+```
+
+Consultar desde otro nodo:
+
+```js
+db.clientes.find()
+```
+
+El documento debe existir.
+
+---
+
+# Paso 11 — Prueba de tolerancia a fallos
+
+## Ver PRIMARY actual
+
+```js
+rs.status()
+```
+
+Ejemplo:
+
+```txt
+mongo1 -> PRIMARY
+```
+
+---
+
+## Apagar PRIMARY
+
+```bash
+docker stop mongo1
+```
+
+---
+
+## Esperar elección automática
+
+MongoDB elegirá automáticamente otro PRIMARY.
+
+Verificar:
+
+```js
+rs.status()
+```
+
+Ejemplo:
+
+```txt
+mongo2 -> PRIMARY
+mongo3 -> SECONDARY
+```
+
+---
+
+## Verificar backend
+
+La aplicación debe seguir funcionando:
+
+```txt
+http://192.168.0.104:3000/api/cuenta/1002003001
+```
+
+---
+
+# Paso 12 — Recuperación automática
+
+Volver a levantar nodo:
+
+```bash
+docker start mongo1
+```
+
+MongoDB lo sincronizará automáticamente.
+
+Verificar:
+
+```js
+rs.status()
+```
+
+Resultado esperado:
+
+```txt
+mongo1 -> SECONDARY
+mongo2 -> PRIMARY
+mongo3 -> SECONDARY
+```
+
+---
+
+# Consideraciones importantes
+
+## No usar localhost
+
+Incorrecto:
+
+```txt
+localhost:27017
+```
+
+Correcto:
+
+```txt
+192.168.X.X:27017
+```
+
+---
+
+## No usar nombres Docker entre equipos
+
+Incorrecto:
+
+```txt
+mongo1
+mongo2
+mongo3
+```
+
+Correcto:
+
+```txt
+192.168.X.X
+```
+
+---
+
+# Comandos útiles
+
+## Ver contenedores
+
+```bash
+docker ps
+```
+
+---
+
+## Ver logs
+
+```bash
+docker logs mongo1
+```
+
+---
+
+## Entrar a mongosh
+
+```bash
+docker exec -it mongo1 mongosh
+```
+
+---
+
+## Estado del Replica Set
+
+```js
+rs.status()
+```
+
+---
+
+## Ver PRIMARY actual
+
+```js
+rs.isMaster()
+```
+
+---
+
+# Resultado esperado
+
+El sistema debe:
+
+* Replicar datos automáticamente
+* Elegir PRIMARY automáticamente
+* Mantener disponibilidad al caer un nodo
+* Recuperar nodos automáticamente
+* Mantener consistencia distribuida
+
+================================================================================
+ARCHIVO: backend/package.json
+================================================================================
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongodb": "^7.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
+
+================================================================================
+ARCHIVO: backend/dockerfile
+================================================================================
+FROM node:22
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]
+
+================================================================================
+ARCHIVO: backend/db.js
+================================================================================
+const { MongoClient } = require("mongodb");
+
+const uri = process.env.MONGO_URI || "mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0";
+const dbName = process.env.DB_NAME || "nexus_banca";
+
+let client;
+let db;
+
+async function connectDB() {
+  if (db) return db;
+
+  client = new MongoClient(uri);
+  await client.connect();
+  db = client.db(dbName);
+
+  console.log(`✅ Conectado a MongoDB — base: ${dbName}`);
+  return db;
+}
+
+function getDB() {
+  if (!db) {
+    throw new Error("La base de datos aún no está conectada.");
+  }
+  return db;
+}
+
+module.exports = { connectDB, getDB };
+
+================================================================================
+ARCHIVO: backend/server.js
+================================================================================
+require("dotenv").config();
+const express = require("express");
+const cors    = require("cors");
+const { connectDB } = require("./db");
+
+const cuentaRoutes = require("./routes/cuenta");
+const depositoRoutes = require("./routes/deposito");
+const retiroRoutes = require("./routes/retiro");
+const testDBRoutes = require("./routes/testDB");
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// Ruta raíz
+app.get("/", (req, res) => {
+  res.json({ mensaje: "🏦 API Banco Nexus funcionando" });
+});
+
+// Rutas
+app.use("/api/cuenta", cuentaRoutes);
+app.use("/api/deposito" , depositoRoutes);
+app.use("/api/retiro" , retiroRoutes);
+app.use("/api/test-db", testDBRoutes);
+
+// Ruta no encontrada
+app.use((req, res) => {
+  res.status(404).json({ ok: false, error: "Ruta no encontrada" });
+});
+
+// Arrancar servidor solo si MongoDB conecta
+const PORT = process.env.PORT || 3000;
+
+connectDB()
+  .then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Servidor en http://192.168.0.104:${PORT}`);
+      console.log(`   GET /`);
+      console.log(`   GET /api/test-db`);
+      console.log(`   GET /api/cuenta/:cuenta`);
+      console.log(`   POST /api/deposito`);
+      console.log(`   POST /api/retiro`);
+    });
+  })
+  .catch((err) => {
+    console.error("❌ No se pudo conectar a MongoDB:", err.message);
+    process.exit(1);
+  });
+
+================================================================================
+ARCHIVO: backend/routes/cuenta.js
+================================================================================
+const express = require("express");
+const router  = express.Router();
+const { getDB } = require("../db");
+
+// GET /api/cuenta/:cuenta
+router.get("/:cuenta", async (req, res) => {
+  try {
+    const db = getDB();
+    const numeroCuenta = req.params.cuenta.trim();
+
+    // Validar entrada
+    if (!numeroCuenta) {
+      return res.status(400).json({
+        ok: false,
+        error: "Debes proporcionar un número de cuenta."
+      });
+    }
+
+    // 1. Buscar la cuenta
+    const cuenta = await db
+      .collection("cuentas")
+      .findOne({ numeroCuenta });
+
+    if (!cuenta) {
+      return res.status(404).json({
+        ok: false,
+        error: `No existe ninguna cuenta con el número '${numeroCuenta}'.`
+      });
+    }
+
+    // 2. Buscar el cliente por clienteId (ObjectId)
+    const cliente = await db
+      .collection("clientes")
+      .findOne({ _id: cuenta.clienteId });
+
+    // 3. Buscar transacciones por cuentaId (ObjectId)
+    const transacciones = await db
+      .collection("transacciones")
+      .find({ cuentaId: cuenta._id })
+      .sort({ fecha: -1 })
+      .toArray();
+
+    res.json({
+      ok: true,
+      cuenta: {
+        numeroCuenta:  cuenta.numeroCuenta,
+        tipoCuenta:    cuenta.tipoCuenta,
+        saldo:         cuenta.saldo,
+        moneda:        cuenta.moneda,
+        fechaApertura: cuenta.fechaApertura,
+        estatus:       cuenta.estatus
+      },
+      cliente: cliente ? {
+        nombre:          cliente.nombre,
+        apellidoPaterno: cliente.apellidoPaterno,
+        apellidoMaterno: cliente.apellidoMaterno,
+        curp:            cliente.curp,
+        correo:          cliente.correo,
+        telefono:        cliente.telefono
+      } : null,
+      transacciones
+    });
+
+  } catch (error) {
+    console.error("Error en GET /api/cuenta/:cuenta", error);
+    res.status(500).json({
+      ok: false,
+      error: "Error interno del servidor.",
+      detalle: error.message
+    });
+  }
+});
+
+module.exports = router;
+
+================================================================================
+ARCHIVO: backend/routes/deposito.js
+================================================================================
+const express = require("express");
+const router  = express.Router();
+const { getDB } = require("../db");
+
+// POST /api/deposito
+router.post("/", async (req, res) => {
+  try {
+    const db = getDB();
+    const { numeroCuenta, monto, descripcion } = req.body;
+
+    if (!numeroCuenta || typeof numeroCuenta !== "string" || !numeroCuenta.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "Debes proporcionar un número de cuenta válido."
+      });
+    }
+
+    if (monto === undefined || monto === null) {
+      return res.status(400).json({ ok: false, error: "El campo 'monto' es obligatorio." });
+    }
+
+    const montoNum = Number(monto);
+    if (isNaN(montoNum) || montoNum <= 0) {
+      return res.status(400).json({
+        ok: false,
+        error: "El monto debe ser un número mayor a cero."
+      });
+    }
+
+    //Buscar cuenta
+    const cuenta = await db
+      .collection("cuentas")
+      .findOne({ numeroCuenta: numeroCuenta.trim() });
+
+    if (!cuenta) {
+      return res.status(404).json({
+        ok: false,
+        error: `No existe ninguna cuenta con el número '${numeroCuenta}'.`
+      });
+    }
+
+    if (cuenta.estatus !== "activa") {
+      return res.status(400).json({
+        ok: false,
+        error: `La cuenta '${numeroCuenta}' no está activa (estatus: ${cuenta.estatus}).`
+      });
+    }
+
+    //Actualizar saldo
+    const nuevoSaldo = cuenta.saldo + montoNum;
+
+    await db.collection("cuentas").updateOne(
+      { _id: cuenta._id },
+      { $set: { saldo: nuevoSaldo } }
+    );
+
+    //Retirar transacción
+    const transaccion = {
+      cuentaId:       cuenta._id,
+      tipo:           "deposito",
+      monto:          montoNum,
+      fecha:          new Date(),
+      descripcion:    descripcion || "Depósito vía API",
+      saldoPosterior: nuevoSaldo
+    };
+
+    const resultado = await db.collection("transacciones").insertOne(transaccion);
+
+    return res.status(201).json({
+      ok: true,
+      mensaje:         "Depósito realizado correctamente.",
+      transaccionId:   resultado.insertedId,
+      numeroCuenta:    cuenta.numeroCuenta,
+      montoDepositado: montoNum,
+      saldoAnterior:   cuenta.saldo,
+      saldoActual:     nuevoSaldo
+    });
+
+  } catch (error) {
+    console.error("Error en POST /api/deposito", error);
+    return res.status(500).json({
+      ok: false,
+      error: "Error interno del servidor.",
+      detalle: error.message
+    });
+  }
+});
+
+module.exports = router;
+
+================================================================================
+ARCHIVO: backend/routes/retiro.js
+================================================================================
+const express = require("express");
+const router  = express.Router();
+const { getDB } = require("../db");
+
+// POST /api/retiro
+router.post("/", async (req, res) => {
+  try {
+    const db = getDB();
+    const { numeroCuenta, monto, descripcion } = req.body;
+
+    if (!numeroCuenta || typeof numeroCuenta !== "string" || !numeroCuenta.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "Debes proporcionar un número de cuenta válido."
+      });
+    }
+
+    if (monto === undefined || monto === null) {
+      return res.status(400).json({ ok: false, error: "El campo 'monto' es obligatorio." });
+    }
+
+    const montoNum = Number(monto);
+    if (isNaN(montoNum) || montoNum <= 0) {
+      return res.status(400).json({
+        ok: false,
+        error: "El monto debe ser un número mayor a cero."
+      });
+    }
+
+    //Buscar cuenta
+    const cuenta = await db
+      .collection("cuentas")
+      .findOne({ numeroCuenta: numeroCuenta.trim() });
+
+    if (!cuenta) {
+      return res.status(404).json({
+        ok: false,
+        error: `No existe ninguna cuenta con el número '${numeroCuenta}'.`
+      });
+    }
+
+    if (cuenta.estatus !== "activa") {
+      return res.status(400).json({
+        ok: false,
+        error: `La cuenta '${numeroCuenta}' no está activa (estatus: ${cuenta.estatus}).`
+      });
+    }
+
+    //Verificar saldo suficiente
+    if (cuenta.saldo < montoNum) {
+      return res.status(400).json({
+        ok: false,
+        error: "Saldo insuficiente para realizar el retiro.",
+        saldoDisponible: cuenta.saldo,
+        montoSolicitado: montoNum
+      });
+    }
+
+    //Actualizar saldo
+    const nuevoSaldo = cuenta.saldo - montoNum;
+
+    await db.collection("cuentas").updateOne(
+      { _id: cuenta._id },
+      { $set: { saldo: nuevoSaldo } }
+    );
+
+    //Registrar transacción
+    const transaccion = {
+      cuentaId:       cuenta._id,
+      tipo:           "retiro",
+      monto:          montoNum,
+      fecha:          new Date(),
+      descripcion:    descripcion || "Retiro vía API",
+      saldoPosterior: nuevoSaldo
+    };
+
+    const resultado = await db.collection("transacciones").insertOne(transaccion);
+
+    return res.status(201).json({
+      ok: true,
+      mensaje:       "Retiro realizado correctamente.",
+      transaccionId: resultado.insertedId,
+      numeroCuenta:  cuenta.numeroCuenta,
+      montoRetirado: montoNum,
+      saldoAnterior: cuenta.saldo,
+      saldoActual:   nuevoSaldo
+    });
+
+  } catch (error) {
+    console.error("Error en POST /api/retiro", error);
+    return res.status(500).json({
+      ok: false,
+      error: "Error interno del servidor.",
+      detalle: error.message
+    });
+  }
+});
+
+module.exports = router;
+
+================================================================================
+ARCHIVO: backend/routes/testDB.js
+================================================================================
+const express = require("express");
+const router = express.Router();
+const { getDB } = require("../db");
+
+// GET /api/test-db
+router.get("/", async (req, res) => {
+  try {
+    const db = getDB();
+
+    const totalClientes    = await db.collection("clientes").countDocuments();
+    const totalCuentas     = await db.collection("cuentas").countDocuments();
+    const totalTransacc    = await db.collection("transacciones").countDocuments();
+
+    res.json({
+      ok: true,
+      mensaje: "Conexión a nexus_banca exitosa",
+      colecciones: {
+        clientes:      totalClientes,
+        cuentas:       totalCuentas,
+        transacciones: totalTransacc
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      error: "No se pudo acceder a la base de datos.",
+      detalle: error.message
+    });
+  }
+});
+
+module.exports = router;
+
+================================================================================
+ARCHIVO: src/main.jsx
+================================================================================
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
+
+================================================================================
+ARCHIVO: src/App.jsx
+================================================================================
+import { useState } from "react";
+
+// Cambia esta URL si tu backend está en otra dirección o puerto
+const API_BASE = "http://192.168.0.104:3000";
+
+const SAMPLE_ACCOUNTS = ["1002003001","1002003002","1002003003","1002003004","1002003005"];
+
+function formatCurrency(amount) {
+  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(amount);
+}
+
+function formatDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatDateTime(dateStr) {
+  return new Date(dateStr).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+const TIPO_LABELS = { debito: "Débito", ahorro: "Ahorro", nomina: "Nómina" };
+const TIPO_COLORS = {
+  debito: { bg: "#E6F1FB", text: "#0C447C", dot: "#378ADD" },
+  ahorro: { bg: "#EAF3DE", text: "#27500A", dot: "#639922" },
+  nomina: { bg: "#FAEEDA", text: "#633806", dot: "#BA7517" },
+};
+
+function Avatar({ nombre, apellido }) {
+  const initials = `${nombre?.[0] ?? ""}${apellido?.[0] ?? ""}`.toUpperCase();
+  return (
+    <div style={{
+      width: 48, height: 48, borderRadius: "50%",
+      background: "#E6F1FB", color: "#0C447C",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontFamily: "'DM Serif Display', Georgia, serif",
+      fontWeight: 400, fontSize: 18, flexShrink: 0,
+      border: "0.5px solid #B5D4F4"
+    }}>{initials}</div>
+  );
+}
+
+function TipoBadge({ tipo }) {
+  const c = TIPO_COLORS[tipo] ?? { bg: "#F1EFE8", text: "#5F5E5A", dot: "#888780" };
+  return (
+    <span style={{
+      background: c.bg, color: c.text,
+      fontSize: 11, fontWeight: 500, letterSpacing: "0.04em",
+      padding: "3px 8px", borderRadius: 4,
+      display: "inline-flex", alignItems: "center", gap: 5,
+      textTransform: "uppercase"
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.dot, flexShrink: 0 }} />
+      {TIPO_LABELS[tipo] ?? tipo}
+    </span>
+  );
+}
+
+function MetricCard({ label, value, sub }) {
+  return (
+    <div style={{
+      background: "var(--color-background-secondary)",
+      borderRadius: 8, padding: "14px 16px", flex: 1, minWidth: 120
+    }}>
+      <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 4 }}>{label}</p>
+      <p style={{ margin: 0, fontSize: 22, fontWeight: 500, color: "var(--color-text-primary)", fontFamily: "'DM Serif Display', Georgia, serif" }}>{value}</p>
+      {sub && <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--color-text-tertiary)" }}>{sub}</p>}
+    </div>
+  );
+}
+
+function TransactionRow({ tx }) {
+  const isDeposit = tx.tipo === "deposito";
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 12,
+      padding: "10px 0", borderBottom: "0.5px solid var(--color-border-tertiary)"
+    }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+        background: isDeposit ? "#EAF3DE" : "#FCEBEB",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 14, color: isDeposit ? "#3B6D11" : "#A32D2D"
+      }}>
+        {isDeposit ? "↓" : "↑"}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "var(--color-text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {tx.descripcion}
+        </p>
+        <p style={{ margin: 0, fontSize: 11, color: "var(--color-text-tertiary)" }}>{formatDateTime(tx.fecha)}</p>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: isDeposit ? "#3B6D11" : "#A32D2D" }}>
+          {isDeposit ? "+" : "−"}{formatCurrency(tx.monto)}
+        </p>
+        <p style={{ margin: 0, fontSize: 11, color: "var(--color-text-tertiary)" }}>
+          Saldo: {formatCurrency(tx.saldoPosterior)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default function BancoNexus() {
+  const [numeroCuenta, setNumeroCuenta] = useState("");
+  const [monto, setMonto] = useState("");
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [status, setStatus] = useState(null);
+
+  async function handleConsulta(e) {
+  e?.preventDefault();
+
+  const cuenta = numeroCuenta.trim();
+
+  if (!cuenta) return;
+
+  setLoading(true);
+  setError(null);
+  setData(null);
+
+  try {
+
+    const res = await fetch(`${API_BASE}/api/cuenta/${cuenta}`);
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const json = await res.json();
+
+    if (!json.ok) {
+      throw new Error(json.error ?? "Error desconocido");
+    }
+
+    setData(json);
+
+  } catch (err) {
+
+    console.error(err);
+    setError(err.message);
+
+  } finally {
+
+    setLoading(false);
+
+  }
+}
+
+  async function handleOperacion(tipo) {
+    if (!data?.cuenta?.numeroCuenta) return;
+
+    const montoNum = Number(monto);
+    if (!monto.trim() || Number.isNaN(montoNum) || montoNum <= 0) {
+      setStatus({ type: "error", text: "Ingresa un monto válido mayor a cero." });
+      return;
+    }
+
+    // Validación: el retiro no puede ser mayor que el saldo disponible
+    if (tipo === "retiro" && data?.cuenta?.saldo != null && montoNum > data.cuenta.saldo) {
+      setStatus({ type: "error", text: "El monto a retirar supera el saldo disponible." });
+      return;
+    }
+
+    setActionLoading(true);
+    setError(null);
+    setStatus(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/${tipo}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          numeroCuenta: data.cuenta.numeroCuenta,
+          monto: montoNum,
+          descripcion: tipo === "deposito" ? "Depósito desde la interfaz" : "Retiro desde la interfaz"
+        })
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || `Error ${res.status}`);
+      }
+
+      setStatus({ type: "success", text: json.mensaje || "Operación realizada correctamente." });
+      setMonto("");
+      await handleConsulta();
+    } catch (err) {
+      console.error(err);
+      setStatus({ type: "error", text: err.message });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleSample(num) {
+  setNumeroCuenta(num);
+
+  setLoading(true);
+  setError(null);
+  setData(null);
+
+  try {
+    const res = await fetch(`${API_BASE}/api/cuenta/${num}`);
+    const json = await res.json();
+
+    if (!json.ok) {
+      throw new Error(json.error ?? "Error desconocido");
+    }
+
+    setData(json);
+
+  } catch (err) {
+    setError(err.message);
+
+  } finally {
+    setLoading(false);
+  }
+}
+
+  const depositos = data?.transacciones?.filter(t => t.tipo === "deposito") ?? [];
+  const retiros = data?.transacciones?.filter(t => t.tipo === "retiro") ?? [];
+  const totalDepositos = depositos.reduce((s, t) => s + t.monto, 0);
+  const totalRetiros = retiros.reduce((s, t) => s + t.monto, 0);
+
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", maxWidth: 680, margin: "0 auto", padding: "2rem 1rem" }}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "2rem" }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 10,
+          background: "#185FA5", display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#E6F1FB", fontSize: 18, fontFamily: "'DM Serif Display', serif"
+        }}>N</div>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 400, fontFamily: "'DM Serif Display', Georgia, serif", color: "var(--color-text-primary)" }}>
+            Banco Nexus
+          </h1>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-secondary)" }}>Consulta de cuenta</p>
+        </div>
+      </div>
+
+      {/* Search form */}
+      <div style={{
+        background: "var(--color-background-primary)",
+        border: "0.5px solid var(--color-border-tertiary)",
+        borderRadius: 12, padding: "1.25rem"
+      }}>
+        <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 500, color: "var(--color-text-secondary)" }}>
+          Número de cuenta
+        </p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            type="text"
+            placeholder="Ej. 1002003001"
+            value={numeroCuenta}
+            onChange={e => setNumeroCuenta(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleConsulta()}
+            style={{ flex: 1, fontFamily: "inherit" }}
+          />
+          <button
+            onClick={handleConsulta}
+            disabled={loading || !numeroCuenta.trim()}
+            style={{
+              background: loading ? "var(--color-background-secondary)" : "#185FA5",
+              color: loading ? "var(--color-text-secondary)" : "#E6F1FB",
+              border: "none", borderRadius: 8, padding: "0 18px",
+              fontSize: 13, fontWeight: 500, cursor: loading ? "not-allowed" : "pointer",
+              fontFamily: "inherit", transition: "background 0.15s"
+            }}
+          >
+            {loading ? "Buscando..." : "Consultar"}
+          </button>
+        </div>
+
+        {/* Quick access */}
+        <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>Acceso rápido:</span>
+          {SAMPLE_ACCOUNTS.map(num => (
+            <button
+              key={num}
+              onClick={() => handleSample(num)}
+              style={{
+                background: "var(--color-background-secondary)", border: "0.5px solid var(--color-border-tertiary)",
+                borderRadius: 4, padding: "2px 8px", fontSize: 11, cursor: "pointer",
+                color: "var(--color-text-secondary)", fontFamily: "inherit"
+              }}
+            >{num}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div style={{
+          marginTop: "1rem", padding: "12px 16px",
+          background: "#FCEBEB", border: "0.5px solid #F7C1C1", borderRadius: 8,
+          fontSize: 13, color: "#791F1F", display: "flex", gap: 8, alignItems: "center"
+        }}>
+          <span style={{ fontSize: 16 }}>⚠</span> {error}
+        </div>
+      )}
+
+      {/* Results */}
+      {data && (
+        <div style={{ marginTop: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+
+          {/* Client + account header */}
+          <div style={{
+            background: "var(--color-background-primary)",
+            border: "0.5px solid var(--color-border-tertiary)",
+            borderRadius: 12, padding: "1.25rem"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+              <Avatar nombre={data.cliente?.nombre} apellido={data.cliente?.apellidoPaterno} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <h2 style={{ margin: 0, fontSize: 17, fontWeight: 400, fontFamily: "'DM Serif Display', serif", color: "var(--color-text-primary)" }}>
+                    {data.cliente?.nombre} {data.cliente?.apellidoPaterno} {data.cliente?.apellidoMaterno}
+                  </h2>
+                  <TipoBadge tipo={data.cuenta?.tipoCuenta} />
+                </div>
+                <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--color-text-tertiary)" }}>
+                  {data.cliente?.correo} · {data.cliente?.telefono}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ borderTop: "0.5px solid var(--color-border-tertiary)", paddingTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <MetricCard
+                label="Saldo disponible"
+                value={formatCurrency(data.cuenta?.saldo)}
+                sub={data.cuenta?.moneda}
+              />
+              <MetricCard
+                label="Total depósitos"
+                value={formatCurrency(totalDepositos)}
+                sub={`${depositos.length} movimiento${depositos.length !== 1 ? "s" : ""}`}
+              />
+              <MetricCard
+                label="Total retiros"
+                value={formatCurrency(totalRetiros)}
+                sub={`${retiros.length} movimiento${retiros.length !== 1 ? "s" : ""}`}
+              />
+            </div>
+
+            <div style={{ marginTop: 12, display: "flex", gap: 16, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+                Cuenta <strong style={{ color: "var(--color-text-secondary)", fontWeight: 500 }}>{data.cuenta?.numeroCuenta}</strong>
+              </span>
+              <span style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+                Apertura <strong style={{ color: "var(--color-text-secondary)", fontWeight: 500 }}>{formatDate(data.cuenta?.fechaApertura)}</strong>
+              </span>
+              <span style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+                Estatus <strong style={{ color: "#27500A", fontWeight: 500 }}>{data.cuenta?.estatus}</strong>
+              </span>
+              <span style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+                CURP <strong style={{ color: "var(--color-text-secondary)", fontWeight: 500, fontFamily: "monospace" }}>{data.cliente?.curp}</strong>
+              </span>
+            </div>
+          </div>
+
+          <div style={{
+            background: "#F8FBFF",
+            border: "0.5px solid var(--color-border-tertiary)",
+            borderRadius: 12,
+            padding: "1.25rem",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12
+          }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "var(--color-text-secondary)" }}>
+                Operación en cuenta
+              </p>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--color-text-tertiary)" }}>
+                Ingresa el monto y elige si deseas depositar o retirar.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+              <label style={{ flex: 1, minWidth: 190 }}>
+                <span style={{ display: "block", marginBottom: 6, fontSize: 12, color: "var(--color-text-secondary)", fontWeight: 500 }}>
+                  Monto (MXN)
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0.00"
+                  value={monto}
+                  onChange={e => setMonto(e.target.value)}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border-tertiary)", fontFamily: "inherit", fontSize: 14 }}
+                />
+              </label>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => handleOperacion("deposito")}
+                  disabled={actionLoading || !monto.trim() || Number(monto) <= 0}
+                  style={{
+                    background: "#2B7CE4",
+                    color: "#FFF",
+                    border: "none",
+                    borderRadius: 8,
+                    padding: "0 18px",
+                    minHeight: 42,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: actionLoading ? "not-allowed" : "pointer",
+                    opacity: actionLoading ? 0.65 : 1,
+                    fontFamily: "inherit"
+                  }}
+                >
+                  {actionLoading ? "Procesando..." : "Depositar"}
+                </button>
+                <button
+                  onClick={() => handleOperacion("retiro")}
+                  disabled={
+                    actionLoading || !monto.trim() || Number(monto) <= 0 ||
+                    (data?.cuenta?.saldo != null && Number(monto) > data.cuenta.saldo)
+                  }
+                  style={{
+                    background: "#F0F0F0",
+                    color: "var(--color-text-primary)",
+                    border: "1px solid var(--color-border-tertiary)",
+                    borderRadius: 8,
+                    padding: "0 18px",
+                    minHeight: 42,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: actionLoading ? "not-allowed" : "pointer",
+                    opacity: actionLoading ? 0.65 : 1,
+                    fontFamily: "inherit"
+                  }}
+                >
+                  {actionLoading ? "Procesando..." : "Retirar"}
+                </button>
+              </div>
+            </div>
+
+            {status && (
+              <div style={{
+                borderRadius: 8,
+                padding: "12px 14px",
+                background: status.type === "success" ? "#E7F8EE" : "#FDF2F2",
+                border: status.type === "success" ? "1px solid #A5E1B7" : "1px solid #F1C0C0",
+                color: status.type === "success" ? "#1B5F2D" : "#8D2323",
+                fontSize: 13
+              }}>
+                {status.type === "success" ? "✅" : "⚠"} {status.text}
+              </div>
+            )}
+          </div>
+
+          {/* Transactions */}
+          {data.transacciones?.length > 0 && (
+            <div style={{
+              background: "var(--color-background-primary)",
+              border: "0.5px solid var(--color-border-tertiary)",
+              borderRadius: 12, padding: "1.25rem"
+            }}>
+              <h3 style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 500, color: "var(--color-text-primary)" }}>
+                Movimientos recientes
+              </h3>
+              <p style={{ margin: "0 0 14px", fontSize: 12, color: "var(--color-text-tertiary)" }}>
+                {data.transacciones.length} transacciones registradas
+              </p>
+              <div>
+                {data.transacciones.map((tx, i) => (
+                  <TransactionRow key={i} tx={tx} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!data && !error && !loading && (
+        <div style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--color-text-tertiary)", fontSize: 13 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🏦</div>
+          Ingresa un número de cuenta para consultar saldo y movimientos
+        </div>
+      )}
+    </div>
+  );
+}
+
+================================================================================
+                             FIN DEL ARCHIVO
+================================================================================

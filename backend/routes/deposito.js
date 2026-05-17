@@ -6,7 +6,7 @@ const { getDB } = require("../db");
 router.post("/", async (req, res) => {
   try {
     const db = getDB();
-    const { numeroCuenta, monto, descripcion } = req.body;
+    const { numeroCuenta, monto, descripcion, sucursal } = req.body;
 
     if (!numeroCuenta || typeof numeroCuenta !== "string" || !numeroCuenta.trim()) {
       return res.status(400).json({
@@ -61,6 +61,7 @@ router.post("/", async (req, res) => {
       monto:          montoNum,
       fecha:          new Date(),
       descripcion:    descripcion || "Depósito vía API",
+      sucursal: sucursal || "Sucursal desconocida",
       saldoPosterior: nuevoSaldo
     };
 
