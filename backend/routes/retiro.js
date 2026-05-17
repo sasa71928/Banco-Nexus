@@ -61,7 +61,7 @@ router.post("/", async (req, res) => {
 
     await db.collection("cuentas").updateOne(
       { _id: cuenta._id },
-      { $set: { saldo: nuevoSaldo } }
+      { $inc: { saldo: -montoNum } }
     );
 
     //Registrar transacción
