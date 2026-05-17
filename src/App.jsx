@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 // Cambia esta URL si tu backend está en otra dirección o puerto
-const API_BASE = "http://192.168.0.104:3000";
+const API_BASE = "http://25.2.89.114:3000";
 
 const SAMPLE_ACCOUNTS = ["1002003001","1002003002","1002003003","1002003004","1002003005"];
 

@@ -1,4 +1,4 @@
-const API = "http://192.168.0.104:3000";
+const API = "http://25.2.89.114:3000";
 
 async function consultaCDMX() {
   const numeroCuenta = "1002003001";

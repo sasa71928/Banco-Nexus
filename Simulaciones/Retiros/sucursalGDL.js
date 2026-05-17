@@ -1,4 +1,4 @@
-const API = "http://192.168.0.104:3000";
+const API = "http://25.2.89.114:3000";
 
 async function retiroGDL() {
 
@@ -9,7 +9,7 @@ async function retiroGDL() {
     },
     body: JSON.stringify({
       numeroCuenta: "1002003001",
-      monto: 1500,
+      monto: 10000,
       descripcion: "Retiro desde GDL",
       sucursal: "GDL"
     })
