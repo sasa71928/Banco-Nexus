@@ -8,8 +8,8 @@ async function depositoGDL() {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      numeroCuenta: "1002003003",
-      monto: 1500,
+      numeroCuenta: "1002003001",
+      monto: 500,
       descripcion: "Depósito desde GDL",
       sucursal: "GDL"
     })
