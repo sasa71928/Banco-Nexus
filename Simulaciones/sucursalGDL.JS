@@ -1,0 +1,21 @@
+const API = "http://192.168.0.104:3000";
+
+async function depositoGDL() {
+
+  const res = await fetch(`${API}/api/deposito`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      numeroCuenta: "1002003003",
+      monto: 1500,
+      descripcion: "Depósito desde GDL",
+      sucursal: "GDL"
+    })
+  });
+
+  return await res.json();
+}
+
+module.exports = depositoGDL;
