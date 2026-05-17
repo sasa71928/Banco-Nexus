@@ -9,7 +9,7 @@ async function retiroGDL() {
     },
     body: JSON.stringify({
       numeroCuenta: "1002003001",
-      monto: 14000,
+      monto: 1500,
       descripcion: "Retiro desde GDL",
       sucursal: "GDL"
     })
