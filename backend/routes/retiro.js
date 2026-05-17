@@ -27,51 +27,59 @@ router.post("/", async (req, res) => {
       });
     }
 
-    //Buscar cuenta
-    const cuenta = await db
+    // Verificar que la cuenta existe y está activa
+    const cuentaExiste = await db
       .collection("cuentas")
       .findOne({ numeroCuenta: numeroCuenta.trim() });
 
-    if (!cuenta) {
+    if (!cuentaExiste) {
       return res.status(404).json({
         ok: false,
         error: `No existe ninguna cuenta con el número '${numeroCuenta}'.`
       });
     }
 
-    if (cuenta.estatus !== "activa") {
+    if (cuentaExiste.estatus !== "activa") {
       return res.status(400).json({
         ok: false,
-        error: `La cuenta '${numeroCuenta}' no está activa (estatus: ${cuenta.estatus}).`
+        error: `La cuenta '${numeroCuenta}' no está activa (estatus: ${cuentaExiste.estatus}).`
       });
     }
 
-    //Verificar saldo suficiente
-    if (cuenta.saldo < montoNum) {
+    //Verifica saldo suficiente Y descuenta en un solo paso
+    const cuentaActualizada = await db.collection("cuentas").findOneAndUpdate(
+      {
+        numeroCuenta: numeroCuenta.trim(),
+        estatus: "activa",
+        saldo: { $gte: montoNum }
+      },
+      {
+        $inc: { saldo: -montoNum }
+      },
+      { returnDocument: "after" }
+    );
+
+    // Si no se actualizó, otra sucursal procesó un retiro simultáneo
+    if (!cuentaActualizada) {
       return res.status(400).json({
         ok: false,
-        error: "Saldo insuficiente para realizar el retiro.",
-        saldoDisponible: cuenta.saldo,
+        error: "Saldo insuficiente para realizar el retiro. Es posible que otra sucursal haya procesado un retiro simultáneo.",
+        saldoDisponible: cuentaExiste.saldo,
         montoSolicitado: montoNum
       });
     }
 
-    //Actualizar saldo
-    const nuevoSaldo = cuenta.saldo - montoNum;
+    const nuevoSaldo = cuentaActualizada.saldo;
+    const saldoAnterior = nuevoSaldo + montoNum;
 
-    await db.collection("cuentas").updateOne(
-      { _id: cuenta._id },
-      { $inc: { saldo: -montoNum } }
-    );
-
-    //Registrar transacción
+    // Registrar transacción
     const transaccion = {
-      cuentaId:       cuenta._id,
+      cuentaId:       cuentaActualizada._id,
       tipo:           "retiro",
       monto:          montoNum,
       fecha:          new Date(),
       descripcion:    descripcion || "Retiro vía API",
-      sucursal: sucursal || "Sucursal desconocida",
+      sucursal:       sucursal || "Sucursal desconocida",
       saldoPosterior: nuevoSaldo
     };
 
@@ -81,9 +89,9 @@ router.post("/", async (req, res) => {
       ok: true,
       mensaje:       "Retiro realizado correctamente.",
       transaccionId: resultado.insertedId,
-      numeroCuenta:  cuenta.numeroCuenta,
+      numeroCuenta:  cuentaActualizada.numeroCuenta,
       montoRetirado: montoNum,
-      saldoAnterior: cuenta.saldo,
+      saldoAnterior: saldoAnterior,
       saldoActual:   nuevoSaldo
     });
 
