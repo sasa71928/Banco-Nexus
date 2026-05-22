@@ -125,7 +125,6 @@ TcpTestSucceeded : True
 ```bash
 docker run -d ^
 --name mongo1 ^
---hostname 172.17.217.56 ^
 -p 27017:27017 ^
 -v mongo1_data:/data/db ^
 mongo ^
@@ -139,7 +138,6 @@ mongod --replSet rs0 --bind_ip_all
 ```bash
 docker run -d ^
 --name mongo2 ^
---hostname 172.17.214.60 ^
 -p 27017:27017 ^
 -v mongo2_data:/data/db ^
 mongo ^
@@ -153,7 +151,6 @@ mongod --replSet rs0 --bind_ip_all
 ```bash
 docker run -d ^
 --name mongo3 ^
---hostname 172.17.217.223 ^
 -p 27017:27017 ^
 -v mongo3_data:/data/db ^
 mongo ^
