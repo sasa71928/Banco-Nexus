@@ -25,8 +25,8 @@ app.get("/", (req, res) => {
 app.use("/api/cuenta",    cuentaRoutes);
 app.use("/api/deposito",  depositoRoutes);
 app.use("/api/retiro",    retiroRoutes);
-app.use("/api/events",    eventosRoutes);
 app.use("/api/events/status", statusRoutes);
+app.use("/api/events",    eventosRoutes);
 app.use("/api/test-db",   testDBRoutes);   // incluye /api/test-db/replica-status
 app.use("/api/historial", historialRoutes);
 
