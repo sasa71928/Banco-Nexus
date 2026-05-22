@@ -1,6 +1,7 @@
 const express = require("express");
 const router  = express.Router();
 const { getDB } = require("../db");
+const { sendAccountUpdate } = require("../sse");
 
 // POST /api/retiro
 router.post("/", async (req, res) => {
@@ -84,6 +85,14 @@ router.post("/", async (req, res) => {
     };
 
     const resultado = await db.collection("transacciones").insertOne(transaccion);
+
+    sendAccountUpdate(cuentaActualizada.numeroCuenta, {
+      tipo: "retiro",
+      numeroCuenta: cuentaActualizada.numeroCuenta,
+      monto: montoNum,
+      saldoActual: nuevoSaldo,
+      fecha: transaccion.fecha
+    });
 
     return res.status(201).json({
       ok: true,

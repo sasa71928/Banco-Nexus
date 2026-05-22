@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 // Cambia esta URL si tu backend está en otra dirección o puerto
 const API_BASE = "http://25.2.89.114:3000";
@@ -108,45 +108,94 @@ export default function BancoNexus() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
   const [status, setStatus] = useState(null);
+  const [dbAlert, setDbAlert] = useState(null);
 
-  async function handleConsulta(e) {
-  e?.preventDefault();
+  useEffect(() => {
+    const statusSource = new EventSource(`${API_BASE}/api/events/status`);
 
-  const cuenta = numeroCuenta.trim();
+    statusSource.addEventListener("db-alert", (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        setDbAlert(payload);
+      } catch (err) {
+        setDbAlert({
+          type: "error",
+          title: "Error de status",
+          message: "No se pudo leer el mensaje de estado del servidor."
+        });
+      }
+    });
 
-  if (!cuenta) return;
+    statusSource.onerror = () => {
+      setDbAlert({
+        type: "error",
+        title: "Conexión de estado caída",
+        message: "La conexión al servicio de estado se perdió. Puede haber latencia o problema con el nodo primario."
+      });
+      statusSource.close();
+    };
 
-  setLoading(true);
-  setError(null);
-  setData(null);
+    return () => {
+      statusSource.close();
+    };
+  }, []);
 
-  try {
+  const handleConsulta = useCallback(async (e) => {
+    e?.preventDefault();
 
-    const res = await fetch(`${API_BASE}/api/cuenta/${cuenta}`);
+    const cuenta = numeroCuenta.trim();
 
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
+    if (!cuenta) return;
+
+    setLoading(true);
+    setError(null);
+    setData(null);
+
+    try {
+
+      const res = await fetch(`${API_BASE}/api/cuenta/${cuenta}`);
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const json = await res.json();
+
+      if (!json.ok) {
+        throw new Error(json.error ?? "Error desconocido");
+      }
+
+      setData(json);
+
+    } catch (err) {
+
+      console.error(err);
+      setError(err.message);
+
+    } finally {
+
+      setLoading(false);
+
     }
+  }, [numeroCuenta]);
 
-    const json = await res.json();
+  useEffect(() => {
+    if (!data?.cuenta?.numeroCuenta) return;
 
-    if (!json.ok) {
-      throw new Error(json.error ?? "Error desconocido");
-    }
+    const source = new EventSource(`${API_BASE}/api/events/${data.cuenta.numeroCuenta}`);
 
-    setData(json);
+    source.addEventListener("update", () => {
+      handleConsulta();
+    });
 
-  } catch (err) {
+    source.onerror = () => {
+      source.close();
+    };
 
-    console.error(err);
-    setError(err.message);
-
-  } finally {
-
-    setLoading(false);
-
-  }
-}
+    return () => {
+      source.close();
+    };
+  }, [data?.cuenta?.numeroCuenta, handleConsulta]);
 
   async function handleOperacion(tipo) {
     if (!data?.cuenta?.numeroCuenta) return;
@@ -292,6 +341,27 @@ export default function BancoNexus() {
           ))}
         </div>
       </div>
+
+      {/* DB status alert */}
+      {dbAlert && (
+        <div style={{
+          marginTop: "1rem", padding: "12px 16px",
+          background: dbAlert.type === "error" ? "#FCEBEB" : dbAlert.type === "warning" ? "#FFF7E6" : "#E7F8EE",
+          border: `0.5px solid ${dbAlert.type === "error" ? "#F7C1C1" : dbAlert.type === "warning" ? "#F0C36B" : "#A5E1B7"}`,
+          borderRadius: 8,
+          fontSize: 13,
+          color: dbAlert.type === "error" ? "#791F1F" : dbAlert.type === "warning" ? "#7F5A00" : "#1B5F2D",
+          display: "flex",
+          gap: 8,
+          alignItems: "center"
+        }}>
+          <span style={{ fontSize: 16 }}>{dbAlert.type === "error" ? "⚠" : dbAlert.type === "warning" ? "⚠" : "✅"}</span>
+          <div>
+            <strong>{dbAlert.title}</strong>
+            <div>{dbAlert.message}</div>
+          </div>
+        </div>
+      )}
 
       {/* Error */}
       {error && (

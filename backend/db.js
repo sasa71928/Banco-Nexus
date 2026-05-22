@@ -1,4 +1,5 @@
 const { MongoClient } = require("mongodb");
+const { sendDbAlert } = require("./sse");
 
 const uri =
   process.env.MONGO_URI ||
@@ -27,7 +28,7 @@ async function connectDB() {
     retryReads: true
   });
 
-  // Detecta cambios de rol
+  // Detecta cambios de rol y primario
   client.on("serverDescriptionChanged", (event) => {
     const tipo = event.newDescription.type;
     const direccion = event.address;
@@ -37,25 +38,74 @@ async function connectDB() {
     if (tipo === "Unknown" || tipo === "RSGhost") {
       replicaStatus.primaryCaido = true;
       replicaStatus.ultimoError = `Nodo ${direccion} no responde (${tipo})`;
-    } else {
-      replicaStatus.primaryCaido = false;
-      replicaStatus.ultimoError = null;
+      sendDbAlert({
+        type: "error",
+        title: "Nodo MongoDB caído",
+        message: `El nodo ${direccion} cambió a estado ${tipo}. Puede haber afectación en el primario.`
+      });
     }
   });
 
-  //Nodo posiblemente caído
+  // Detected topology change for writable servers
+  client.on("topologyDescriptionChanged", (event) => {
+    const prevWritable = event.previousDescription?.hasWritableServer;
+    const nextWritable = event.newDescription?.hasWritableServer;
+
+    if (prevWritable && !nextWritable) {
+      replicaStatus.primaryCaido = true;
+      replicaStatus.ultimoError = "Se perdió el nodo primario o no hay servidor escribible.";
+      sendDbAlert({
+        type: "error",
+        title: "Nodo primario inaccesible",
+        message: "El Replica Set de MongoDB ya no tiene un primario escribible."
+      });
+    }
+
+    if (!prevWritable && nextWritable) {
+      replicaStatus.primaryCaido = false;
+      replicaStatus.ultimoError = null;
+      sendDbAlert({
+        type: "success",
+        title: "Nodo primario restaurado",
+        message: "El Replica Set de MongoDB recuperó un nodo primario escribible."
+      });
+    }
+  });
+
+  // Nodo posiblemente caído
   client.on("serverHeartbeatFailed", (event) => {
     console.error(`Heartbeat fallido en [${event.connectionId}]:`, event.failure?.message);
     replicaStatus.primaryCaido = true;
     replicaStatus.ultimoError = `Heartbeat fallido en ${event.connectionId}`;
+    sendDbAlert({
+      type: "error",
+      title: "Latido de MongoDB fallido",
+      message: `Heartbeat fallido en ${event.connectionId}: ${event.failure?.message || "sin detalle"}`
+    });
   });
 
-  // Heartbeat restaurado
+  // Heartbeat restaurado / latencia
   client.on("serverHeartbeatSucceeded", (event) => {
+    const duration = event.duration;
+    const THRESHOLD_MS = 300;
+
+    if (duration > THRESHOLD_MS) {
+      sendDbAlert({
+        type: "warning",
+        title: "Latencia alta de MongoDB",
+        message: `Latencia de heartbeat detectada: ${duration} ms (> ${THRESHOLD_MS} ms).`
+      });
+    }
+
     if (replicaStatus.primaryCaido) {
       console.log(`Heartbeat restaurado en [${event.connectionId}]`);
       replicaStatus.primaryCaido = false;
       replicaStatus.ultimoError = null;
+      sendDbAlert({
+        type: "success",
+        title: "Latido restaurado",
+        message: `Heartbeat restaurado en ${event.connectionId}. El Replica Set está recuperando conexión.`
+      });
     }
   });
 

@@ -6,6 +6,8 @@ const { connectDB } = require("./db");
 const cuentaRoutes    = require("./routes/cuenta");
 const depositoRoutes  = require("./routes/deposito");
 const retiroRoutes    = require("./routes/retiro");
+const eventosRoutes   = require("./routes/eventos");
+const statusRoutes    = require("./routes/status");
 const testDBRoutes    = require("./routes/testDB");
 const historialRoutes = require("./routes/historial");
 
@@ -23,6 +25,8 @@ app.get("/", (req, res) => {
 app.use("/api/cuenta",    cuentaRoutes);
 app.use("/api/deposito",  depositoRoutes);
 app.use("/api/retiro",    retiroRoutes);
+app.use("/api/events",    eventosRoutes);
+app.use("/api/events/status", statusRoutes);
 app.use("/api/test-db",   testDBRoutes);   // incluye /api/test-db/replica-status
 app.use("/api/historial", historialRoutes);
 
