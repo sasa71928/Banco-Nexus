@@ -463,11 +463,11 @@ export default function BancoNexus() {
                   placeholder="0.00"
                   value={monto}
                   onChange={e => setMonto(e.target.value)}
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border-tertiary)", fontFamily: "inherit", fontSize: 14 }}
+                  style={{ width: "90%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border-tertiary)", fontFamily: "inherit", fontSize: 14 }}
                 />
               </label>
 
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 20 }}>
                 <button
                   onClick={() => handleOperacion("deposito")}
                   disabled={actionLoading || !monto.trim() || Number(monto) <= 0}
